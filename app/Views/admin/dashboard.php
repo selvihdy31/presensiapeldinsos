@@ -1,6 +1,40 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 
+<!-- Filter Bagian -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="<?= base_url('admin/dashboard') ?>" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label class="form-label mb-0 fw-bold">
+                    <i class="bi bi-funnel"></i> Filter Berdasarkan Bagian:
+                </label>
+            </div>
+            <div class="col-auto">
+                <select name="bagian" class="form-select" onchange="this.form.submit()">
+                    <option value="">Semua Bagian</option>
+                    <option value="sekretariat" <?= isset($selected_bagian) && $selected_bagian == 'sekretariat' ? 'selected' : '' ?>>
+                        Sekretariat
+                    </option>
+                    <option value="rehlinjamsos" <?= isset($selected_bagian) && $selected_bagian == 'rehlinjamsos' ? 'selected' : '' ?>>
+                        Rehabilitasi dan Jaminan Sosial
+                    </option>
+                    <option value="dayasos" <?= isset($selected_bagian) && $selected_bagian == 'dayasos' ? 'selected' : '' ?>>
+                        Pemberdayaan Sosial
+                    </option>
+                </select>
+            </div>
+            <?php if(isset($selected_bagian) && !empty($selected_bagian)): ?>
+            <div class="col-auto">
+                <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Reset Filter
+                </a>
+            </div>
+            <?php endif; ?>
+        </form>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
     <!-- Total Pegawai -->
     <div class="col-md-4">
@@ -10,6 +44,13 @@
                     <div>
                         <h6 class="mb-2 opacity-75">Total Pegawai</h6>
                         <h2 class="mb-0 fw-bold"><?= $total_pegawai ?></h2>
+                        <?php if(isset($selected_bagian) && !empty($selected_bagian)): ?>
+                            <small class="opacity-75">
+                                <?= ucfirst($selected_bagian) ?>
+                            </small>
+                        <?php else: ?>
+                            <small class="opacity-75">Semua Bagian</small>
+                        <?php endif; ?>
                     </div>
                     <div style="font-size: 50px; opacity: 0.3;">
                         <i class="bi bi-people"></i>
@@ -19,14 +60,17 @@
         </div>
     </div>
     
-    <!-- Presensi Hari Ini -->
+    <!-- Sudah Presensi Hari Ini -->
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
             <div class="card-body text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="mb-2 opacity-75">Presensi Hari Ini</h6>
+                        <h6 class="mb-2 opacity-75">Sudah Presensi</h6>
                         <h2 class="mb-0 fw-bold"><?= $presensi_hari_ini ?></h2>
+                        <small class="opacity-75">
+                            <?= $total_pegawai > 0 ? round(($presensi_hari_ini/$total_pegawai)*100, 1) : 0 ?>% dari total
+                        </small>
                     </div>
                     <div style="font-size: 50px; opacity: 0.3;">
                         <i class="bi bi-calendar-check"></i>
@@ -36,17 +80,95 @@
         </div>
     </div>
     
-    <!-- QR Code Aktif -->
+    <!-- Belum Presensi Hari Ini -->
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <div class="card-body text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="mb-2 opacity-75">QR Code Aktif</h6>
-                        <h2 class="mb-0 fw-bold"><?= $qr_aktif ?></h2>
+                        <h6 class="mb-2 opacity-75">Belum Presensi</h6>
+                        <h2 class="mb-0 fw-bold"><?= $belum_presensi ?></h2>
+                        <small class="opacity-75">
+                            <?= $total_pegawai > 0 ? round(($belum_presensi/$total_pegawai)*100, 1) : 0 ?>% dari total
+                        </small>
                     </div>
                     <div style="font-size: 50px; opacity: 0.3;">
-                        <i class="bi bi-qr-code"></i>
+                        <i class="bi bi-calendar-x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistik Detail -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                            <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Hadir</h6>
+                        <h4 class="mb-0 fw-bold"><?= $hadir_hari_ini ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                            <i class="bi bi-clock-fill text-warning fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Terlambat</h6>
+                        <h4 class="mb-0 fw-bold"><?= $terlambat_hari_ini ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                            <i class="bi bi-file-earmark-check-fill text-info fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Ijin</h6>
+                        <h4 class="mb-0 fw-bold"><?= $ijin_hari_ini ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                            <i class="bi bi-qr-code text-primary fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">QR Aktif</h6>
+                        <h4 class="mb-0 fw-bold"><?= $qr_aktif ?></h4>
                     </div>
                 </div>
             </div>
@@ -100,10 +222,15 @@
 
 <!-- Recent Presensi -->
 <div class="card">
-    <div class="card-header bg-white">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">
             <i class="bi bi-clock-history"></i> Presensi Terbaru
         </h5>
+        <?php if(isset($selected_bagian) && !empty($selected_bagian)): ?>
+            <span class="badge bg-primary">
+                Filter: <?= ucfirst($selected_bagian) ?>
+            </span>
+        <?php endif; ?>
     </div>
     <div class="card-body">
         <?php if(empty($recent_presensi)): ?>
@@ -118,16 +245,22 @@
                         <tr>
                             <th>NIP</th>
                             <th>Nama</th>
+                            <th>Bagian</th>
                             <th>Waktu</th>
                             <th>Keterangan</th>
                             <th>Lokasi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach(array_slice($recent_presensi, 0, 5) as $p): ?>
+                        <?php foreach(array_slice($recent_presensi, 0, 10) as $p): ?>
                             <tr>
                                 <td><?= $p['nip'] ?></td>
                                 <td><?= $p['nama'] ?></td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        <?= ucfirst($p['bagian']) ?>
+                                    </span>
+                                </td>
                                 <td>
                                     <small class="text-muted">
                                         <?= date('d/m/Y H:i', strtotime($p['waktu'])) ?>
@@ -135,12 +268,15 @@
                                 </td>
                                 <td>
                                     <?php
-                                    // Tentukan warna badge berdasarkan keterangan
                                     $keterangan = strtolower($p['keterangan']);
                                     switch ($keterangan) {
                                         case 'hadir':
                                             $badgeClass = 'bg-success';
                                             $displayText = 'Hadir';
+                                            break;
+                                        case 'terlambat':
+                                            $badgeClass = 'bg-warning';
+                                            $displayText = 'Terlambat';
                                             break;
                                         case 'alpha':
                                             $badgeClass = 'bg-danger';
@@ -161,7 +297,7 @@
                                 </td>
                                 <td>
                                     <small class="text-muted">
-                                        <?= $p['lokasi'] ?? 'Tidak ada data' ?>
+                                        <?= $p['lokasi'] ?? '-' ?>
                                     </small>
                                 </td>
                             </tr>

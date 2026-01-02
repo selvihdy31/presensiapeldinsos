@@ -34,7 +34,7 @@ class Pegawai extends BaseController
             'nama' => 'required|min_length[3]',
             'username' => 'required|min_length[3]|is_unique[users.username]',
             'password' => 'required|min_length[6]',
-            'foto' => 'max_size[foto,2048]|is_image[foto]|mime_in[foto,image/jpg,image/jpeg,image/png]'
+            // 'foto' => 'max_size[foto,2048]|is_image[foto]|mime_in[foto,image/jpg,image/jpeg,image/png]'
         ];
 
         $errors = [
@@ -43,12 +43,12 @@ class Pegawai extends BaseController
             ],
             'username' => [
                 'is_unique' => 'Username sudah digunakan'
-            ],
-            'foto' => [
-                'max_size' => 'Ukuran foto maksimal 2MB',
-                'is_image' => 'File harus berupa gambar',
-                'mime_in' => 'Format foto harus JPG/PNG'
             ]
+            // 'foto' => [
+            //     'max_size' => 'Ukuran foto maksimal 2MB',
+            //     'is_image' => 'File harus berupa gambar',
+            //     'mime_in' => 'Format foto harus JPG/PNG'
+            // ]
         ];
 
         if (!$this->validate($rules, $errors)) {
@@ -67,19 +67,19 @@ class Pegawai extends BaseController
         ];
 
         // Upload foto ke folder public/uploads/pegawai
-        $foto = $this->request->getFile('foto');
-        if ($foto && $foto->isValid() && !$foto->hasMoved()) {
-            $newName = 'pegawai_' . time() . '_' . $foto->getRandomName();
+        // $foto = $this->request->getFile('foto');
+        // if ($foto && $foto->isValid() && !$foto->hasMoved()) {
+        //     $newName = 'pegawai_' . time() . '_' . $foto->getRandomName();
             
-            // Pastikan folder ada
-            $uploadPath = FCPATH . 'uploads/pegawai';
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
+        //     // Pastikan folder ada
+        //     $uploadPath = FCPATH . 'uploads/pegawai';
+        //     if (!is_dir($uploadPath)) {
+        //         mkdir($uploadPath, 0777, true);
+        //     }
             
-            $foto->move($uploadPath, $newName);
-            $data['foto'] = $newName;
-        }
+        //     $foto->move($uploadPath, $newName);
+        //     $data['foto'] = $newName;
+        // }
 
         $this->userModel->insert($data);
         
@@ -117,7 +117,7 @@ class Pegawai extends BaseController
             'nip' => "required|min_length[3]|is_unique[users.nip,id,{$id}]",
             'nama' => 'required|min_length[3]',
             'username' => "required|min_length[3]|is_unique[users.username,id,{$id}]",
-            'foto' => 'max_size[foto,2048]|is_image[foto]|mime_in[foto,image/jpg,image/jpeg,image/png]'
+            // 'foto' => 'max_size[foto,2048]|is_image[foto]|mime_in[foto,image/jpg,image/jpeg,image/png]'
         ];
 
         // Jika password diisi, tambahkan validasi
@@ -143,26 +143,26 @@ class Pegawai extends BaseController
         }
 
         // Upload foto baru jika ada
-        $foto = $this->request->getFile('foto');
-        if ($foto && $foto->isValid() && !$foto->hasMoved()) {
-            // Hapus foto lama
-            if ($pegawai['foto']) {
-                $oldPath = FCPATH . 'uploads/pegawai/' . $pegawai['foto'];
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
-                }
-            }
+        // $foto = $this->request->getFile('foto');
+        // if ($foto && $foto->isValid() && !$foto->hasMoved()) {
+        //     // Hapus foto lama
+        //     if ($pegawai['foto']) {
+        //         $oldPath = FCPATH . 'uploads/pegawai/' . $pegawai['foto'];
+        //         if (file_exists($oldPath)) {
+        //             unlink($oldPath);
+        //         }
+        //     }
 
-            $newName = 'pegawai_' . time() . '_' . $foto->getRandomName();
-            $uploadPath = FCPATH . 'uploads/pegawai';
+        //     $newName = 'pegawai_' . time() . '_' . $foto->getRandomName();
+        //     $uploadPath = FCPATH . 'uploads/pegawai';
             
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
+        //     if (!is_dir($uploadPath)) {
+        //         mkdir($uploadPath, 0777, true);
+        //     }
             
-            $foto->move($uploadPath, $newName);
-            $data['foto'] = $newName;
-        }
+        //     $foto->move($uploadPath, $newName);
+        //     $data['foto'] = $newName;
+        // }
 
         $this->userModel->update($id, $data);
         
@@ -200,12 +200,12 @@ class Pegawai extends BaseController
         }
 
         // Hapus foto jika ada
-        if ($pegawai['foto']) {
-            $fotoPath = FCPATH . 'uploads/pegawai/' . $pegawai['foto'];
-            if (file_exists($fotoPath)) {
-                unlink($fotoPath);
-            }
-        }
+        // if ($pegawai['foto']) {
+        //     $fotoPath = FCPATH . 'uploads/pegawai/' . $pegawai['foto'];
+        //     if (file_exists($fotoPath)) {
+        //         unlink($fotoPath);
+        //     }
+        // }
 
         $this->userModel->delete($id);
         

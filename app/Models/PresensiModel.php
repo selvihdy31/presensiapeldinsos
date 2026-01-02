@@ -49,23 +49,28 @@ class PresensiModel extends Model
 
     /**
      * Get presensi dengan data user
-     * UPDATED: Tambah filter tahun
+     * UPDATED: Tambah filter tahun dan bagian
      */
     public function getPresensiWithUser($filters = [])
     {
         $builder = $this->db->table($this->table)
-            ->select('presensi.*, users.nip, users.nama')
+            ->select('presensi.*, users.nip, users.nama, users.bagian')
             ->join('users', 'users.id = presensi.user_id', 'left');
 
         if (isset($filters['user_id']) && !empty($filters['user_id'])) {
             $builder->where('presensi.user_id', (int)$filters['user_id']);
         }
         
+        // TAMBAHAN: Filter berdasarkan bagian
+        if (isset($filters['bagian']) && !empty($filters['bagian'])) {
+            $builder->where('users.bagian', $filters['bagian']);
+        }
+        
         if (isset($filters['tanggal']) && !empty($filters['tanggal'])) {
             $builder->where("DATE(presensi.waktu)", $filters['tanggal']);
         }
         
-        // TAMBAHAN: Filter berdasarkan tahun
+        // Filter berdasarkan tahun
         if (isset($filters['tahun']) && !empty($filters['tahun'])) {
             $builder->where("YEAR(presensi.waktu)", (int)$filters['tahun']);
         }

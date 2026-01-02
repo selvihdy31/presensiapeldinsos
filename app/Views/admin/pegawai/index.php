@@ -32,6 +32,7 @@
                         <th>NIP</th>
                         <th>Nama</th>
                         <th>Username</th>
+                        <th>Bagian</th>
                         <th>Status</th>
                         <th>Tanggal Dibuat</th>
                         <th>Aksi</th>
@@ -40,7 +41,7 @@
                 <tbody>
                     <?php if(empty($pegawai)): ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted">Belum ada data pegawai</td>
+                            <td colspan="8" class="text-center text-muted">Belum ada data pegawai</td>
                         </tr>
                     <?php else: ?>
                         <?php $no = 1; foreach($pegawai as $p): ?>
@@ -49,6 +50,27 @@
                                 <td><?= $p['nip'] ?></td>
                                 <td><?= $p['nama'] ?></td>
                                 <td><?= $p['username'] ?></td>
+                                <td>
+                                    <?php 
+                                    $bagianLabels = [
+                                        'sekretariat' => 'Sekretariat',
+                                        'rehlinjamsos' => 'Rehlinjamsos',
+                                        'dayasos' => 'Dayasos'
+                                    ];
+                                    $bagianColors = [
+                                        'sekretariat' => 'primary',
+                                        'rehlinjamsos' => 'info',
+                                        'dayasos' => 'warning'
+                                    ];
+                                    ?>
+                                    <?php if(isset($p['bagian']) && $p['bagian']): ?>
+                                        <span class="badge bg-<?= $bagianColors[$p['bagian']] ?>">
+                                            <?= $bagianLabels[$p['bagian']] ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">-</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if($p['status'] == 'aktif'): ?>
                                         <span class="badge bg-success">Aktif</span>

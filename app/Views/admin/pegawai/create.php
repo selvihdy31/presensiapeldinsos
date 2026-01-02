@@ -36,6 +36,21 @@
                         <input type="password" class="form-control" name="password" required>
                         <small class="text-muted">Minimal 6 karakter</small>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bagian *</label>
+                        <select class="form-select" name="bagian" required>
+                            <option value="">-- Pilih Bagian --</option>
+                            <option value="sekretariat" <?= old('bagian') == 'sekretariat' ? 'selected' : '' ?>>
+                                Sekretariat
+                            </option>
+                            <option value="rehlinjamsos" <?= old('bagian') == 'rehlinjamsos' ? 'selected' : '' ?>>
+                                Rehlin Jamsos
+                            </option>
+                            <option value="dayasos" <?= old('bagian') == 'dayasos' ? 'selected' : '' ?>>
+                                Daya Sos
+                            </option>
+                        </select>
+                    </div>
                     <!-- <div class="mb-3">
                         <label class="form-label">Foto</label>
                         <input type="file" class="form-control" name="foto" accept="image/*">

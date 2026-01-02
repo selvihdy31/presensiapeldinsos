@@ -8,7 +8,7 @@
     <div class="card-body">
         <form method="get" action="<?= base_url('admin/laporan') ?>">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Pegawai</label>
                     <select class="form-select" name="user_id">
                         <option value="">Semua Pegawai</option>
@@ -17,6 +17,21 @@
                                 <?= $p['nama'] ?>
                             </option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Bagian</label>
+                    <select class="form-select" name="bagian">
+                        <option value="">Semua Bagian</option>
+                        <option value="sekretariat" <?= isset($filters['bagian']) && $filters['bagian'] == 'sekretariat' ? 'selected' : '' ?>>
+                            Sekretariat
+                        </option>
+                        <option value="rehlinjamsos" <?= isset($filters['bagian']) && $filters['bagian'] == 'rehlinjamsos' ? 'selected' : '' ?>>
+                            Rehlin Jamsos
+                        </option>
+                        <option value="dayasos" <?= isset($filters['bagian']) && $filters['bagian'] == 'dayasos' ? 'selected' : '' ?>>
+                            Daya Sos
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -84,6 +99,7 @@
                         <th>No</th>
                         <th>NIP</th>
                         <th>Nama</th>
+                        <th>Bagian</th>
                         <th>Tanggal</th>
                         <th>Waktu</th>
                         <th>Keterangan</th>
@@ -94,7 +110,7 @@
                 <tbody>
                     <?php if (empty($presensi)): ?>
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Tidak ada data presensi</td>
+                            <td colspan="9" class="text-center text-muted">Tidak ada data presensi</td>
                         </tr>
                     <?php else: ?>
                         <?php $no = 1;
@@ -103,6 +119,27 @@
                                 <td><?= $no++ ?></td>
                                 <td><?= $p['nip'] ?></td>
                                 <td><?= $p['nama'] ?></td>
+                                <td>
+                                    <?php 
+                                    $bagianLabels = [
+                                        'sekretariat' => 'Sekretariat',
+                                        'rehlinjamsos' => 'Rehlin Jamsos',
+                                        'dayasos' => 'Daya Sos'
+                                    ];
+                                    $bagianColors = [
+                                        'sekretariat' => 'primary',
+                                        'rehlinjamsos' => 'info',
+                                        'dayasos' => 'warning'
+                                    ];
+                                    ?>
+                                    <?php if(isset($p['bagian']) && $p['bagian']): ?>
+                                        <span class="badge bg-<?= $bagianColors[$p['bagian']] ?>">
+                                            <?= $bagianLabels[$p['bagian']] ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">-</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= date('d/m/Y', strtotime($p['waktu'])) ?></td>
                                 <td><?= date('H:i', strtotime($p['waktu'])) ?></td>
                                 <td>
