@@ -20,43 +20,85 @@ class Dashboard extends BaseController
         $presensiModel = new PresensiModel();
         $qrModel = new QrCodeModel();
 
-        // Hitung statistik
-        $totalPegawai = $userModel->where('role', 'pegawai')->countAllResults();
-        $presensiHariIni = $presensiModel->where('DATE(waktu)', date('Y-m-d'))->countAllResults();
+        // Ambil filter bagian dari query string
+        $bagian = $this->request->getGet('bagian');
+
+        // Hitung total pegawai berdasarkan bagian
+        $totalPegawaiQuery = $userModel->where('role', 'pegawai')->where('status', 'aktif');
+        if (!empty($bagian)) {
+            $totalPegawaiQuery->where('bagian', $bagian);
+        }
+        $totalPegawai = $totalPegawaiQuery->countAllResults();
+
+        // Ambil semua ID pegawai aktif berdasarkan bagian
+        $pegawaiQuery = $userModel->where('role', 'pegawai')->where('status', 'aktif');
+        if (!empty($bagian)) {
+            $pegawaiQuery->where('bagian', $bagian);
+        }
+        $pegawaiList = $pegawaiQuery->findAll();
+        $pegawaiIds = array_column($pegawaiList, 'id');
+
+        // Hitung pegawai yang sudah presensi hari ini
+        $presensiHariIniQuery = $presensiModel
+            ->where('DATE(waktu)', date('Y-m-d'));
+        if (!empty($bagian) && !empty($pegawaiIds)) {
+            $presensiHariIniQuery->whereIn('user_id', $pegawaiIds);
+        }
+        $presensiHariIni = $presensiHariIniQuery->countAllResults();
+
+        // Hitung pegawai yang belum presensi
+        $belumPresensi = $totalPegawai - $presensiHariIni;
+
+        // QR Code aktif (tidak perlu filter bagian)
         $qrAktif = $qrModel
             ->where('status', 'aktif')
             ->where('tanggal', date('Y-m-d'))
             ->countAllResults();
 
-        // Presensi terbaru (limit 10)
-        $recentPresensi = $presensiModel->getPresensiWithUser([]);
+        // Presensi terbaru dengan filter bagian
+        $filters = [];
+        if (!empty($bagian)) {
+            $filters['bagian'] = $bagian;
+        }
+        $recentPresensi = $presensiModel->getPresensiWithUser($filters);
         $recentPresensi = array_slice($recentPresensi, 0, 10);
 
-        // Statistik keterangan hari ini
-        $hadirHariIni = $presensiModel
+        // Statistik keterangan hari ini berdasarkan bagian
+        $hadirQuery = $presensiModel
             ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'hadir')
-            ->countAllResults();
-            
-        $terlambatHariIni = $presensiModel
+            ->where('keterangan', 'hadir');
+        if (!empty($bagian) && !empty($pegawaiIds)) {
+            $hadirQuery->whereIn('user_id', $pegawaiIds);
+        }
+        $hadirHariIni = $hadirQuery->countAllResults();
+        
+        $terlambatQuery = $presensiModel
             ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'terlambat')
-            ->countAllResults();
-            
-        $ijinHariIni = $presensiModel
+            ->where('keterangan', 'terlambat');
+        if (!empty($bagian) && !empty($pegawaiIds)) {
+            $terlambatQuery->whereIn('user_id', $pegawaiIds);
+        }
+        $terlambatHariIni = $terlambatQuery->countAllResults();
+        
+        $ijinQuery = $presensiModel
             ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'ijin')
-            ->countAllResults();
+            ->where('keterangan', 'ijin');
+        if (!empty($bagian) && !empty($pegawaiIds)) {
+            $ijinQuery->whereIn('user_id', $pegawaiIds);
+        }
+        $ijinHariIni = $ijinQuery->countAllResults();
 
         $data = [
             'title' => 'Dashboard Admin',
             'total_pegawai' => $totalPegawai,
             'presensi_hari_ini' => $presensiHariIni,
+            'belum_presensi' => $belumPresensi,
             'qr_aktif' => $qrAktif,
             'hadir_hari_ini' => $hadirHariIni,
             'terlambat_hari_ini' => $terlambatHariIni,
             'ijin_hari_ini' => $ijinHariIni,
-            'recent_presensi' => $recentPresensi
+            'recent_presensi' => $recentPresensi,
+            'selected_bagian' => $bagian
         ];
 
         return view('admin/dashboard', $data);
