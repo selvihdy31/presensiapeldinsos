@@ -27,9 +27,9 @@ class Database extends Config
     public array $default = [
         'DSN'          => '',
         'hostname'     => 'localhost',
-        'username'     => '',
-        'password'     => '',
-        'database'     => 'absensi_dinsos',
+        'username'     => 'absensidinsos',
+        'password'     => '4xnQSD1uUO92+)8sv_',
+        'database'     => 'absensidinsos_db',
         'DBDriver'     => 'MySQLi',
         'DBPrefix'     => '',
         'pConnect'     => false,
