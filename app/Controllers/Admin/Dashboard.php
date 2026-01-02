@@ -72,13 +72,14 @@ class Dashboard extends BaseController
         }
         $hadirHariIni = $hadirQuery->countAllResults();
         
-        $terlambatQuery = $presensiModel
+        // PERUBAHAN: Ganti dari 'terlambat' menjadi 'alpha'
+        $alphaQuery = $presensiModel
             ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'terlambat');
+            ->where('keterangan', 'alpha');
         if (!empty($bagian) && !empty($pegawaiIds)) {
-            $terlambatQuery->whereIn('user_id', $pegawaiIds);
+            $alphaQuery->whereIn('user_id', $pegawaiIds);
         }
-        $terlambatHariIni = $terlambatQuery->countAllResults();
+        $alphaHariIni = $alphaQuery->countAllResults();
         
         $ijinQuery = $presensiModel
             ->where('DATE(waktu)', date('Y-m-d'))
@@ -95,7 +96,7 @@ class Dashboard extends BaseController
             'belum_presensi' => $belumPresensi,
             'qr_aktif' => $qrAktif,
             'hadir_hari_ini' => $hadirHariIni,
-            'terlambat_hari_ini' => $terlambatHariIni,
+            'alpha_hari_ini' => $alphaHariIni,  // PERUBAHAN: Ganti nama variabel
             'ijin_hari_ini' => $ijinHariIni,
             'recent_presensi' => $recentPresensi,
             'selected_bagian' => $bagian

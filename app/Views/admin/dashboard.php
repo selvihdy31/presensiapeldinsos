@@ -126,13 +126,13 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-shrink-0">
-                        <div class="rounded-circle bg-warning bg-opacity-10 p-3">
-                            <i class="bi bi-clock-fill text-warning fs-4"></i>
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                            <i class="bi bi-x-circle-fill text-danger fs-4"></i>
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Terlambat</h6>
-                        <h4 class="mb-0 fw-bold"><?= $terlambat_hari_ini ?></h4>
+                        <h6 class="mb-1 text-muted">Alpha</h6>
+                        <h4 class="mb-0 fw-bold"><?= $alpha_hari_ini ?></h4>
                     </div>
                 </div>
             </div>
