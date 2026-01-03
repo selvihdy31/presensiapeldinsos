@@ -20,17 +20,17 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Bagian</label>
+                    <label class="form-label">Bidang</label>
                     <select class="form-select" name="bagian">
-                        <option value="">Semua Bagian</option>
+                        <option value="">Semua Bidang</option>
                         <option value="sekretariat" <?= isset($filters['bagian']) && $filters['bagian'] == 'sekretariat' ? 'selected' : '' ?>>
                             Sekretariat
                         </option>
                         <option value="rehlinjamsos" <?= isset($filters['bagian']) && $filters['bagian'] == 'rehlinjamsos' ? 'selected' : '' ?>>
-                            Rehlin Jamsos
+                            Rehlinjamsos
                         </option>
                         <option value="dayasos" <?= isset($filters['bagian']) && $filters['bagian'] == 'dayasos' ? 'selected' : '' ?>>
-                            Daya Sos
+                            Dayasos
                         </option>
                     </select>
                 </div>
@@ -99,7 +99,7 @@
                         <th>No</th>
                         <th>NIP</th>
                         <th>Nama</th>
-                        <th>Bagian</th>
+                        <th>Bidang</th>
                         <th>Tanggal</th>
                         <th>Waktu</th>
                         <th>Keterangan</th>
@@ -123,8 +123,8 @@
                                     <?php 
                                     $bagianLabels = [
                                         'sekretariat' => 'Sekretariat',
-                                        'rehlinjamsos' => 'Rehlin Jamsos',
-                                        'dayasos' => 'Daya Sos'
+                                        'rehlinjamsos' => 'Rehlinjamsos',
+                                        'dayasos' => 'Dayasos'
                                     ];
                                     $bagianColors = [
                                         'sekretariat' => 'primary',

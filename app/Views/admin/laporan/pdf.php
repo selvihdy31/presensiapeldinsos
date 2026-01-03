@@ -105,7 +105,7 @@
                 <th width="4%">No</th>
                 <th width="10%">NIP</th>
                 <th width="16%">Nama</th>
-                <th width="12%">Bagian</th>
+                <th width="12%">Bidang</th>
                 <th width="9%">Tanggal</th>
                 <th width="7%">Waktu</th>
                 <th width="10%">Keterangan</th>

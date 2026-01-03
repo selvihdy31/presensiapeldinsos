@@ -166,7 +166,7 @@ class Laporan extends BaseController
                 $sheet->setCellValue('A' . $headerRow, 'NO');
                 $sheet->setCellValue('B' . $headerRow, 'NAMA');
                 $sheet->setCellValue('C' . $headerRow, 'NIP');
-                $sheet->setCellValue('D' . $headerRow, 'BAGIAN');
+                $sheet->setCellValue('D' . $headerRow, 'BIDANG');
                 $sheet->setCellValue('E' . $headerRow, 'KETERANGAN');
 
                 // Style header
@@ -353,7 +353,7 @@ class Laporan extends BaseController
                 $table->addCell(1000, $cellStyle)->addText('NO', ['bold' => true], ['alignment' => Jc::CENTER]);
                 $table->addCell(3500, $cellStyle)->addText('NAMA', ['bold' => true], ['alignment' => Jc::CENTER]);
                 $table->addCell(2500, $cellStyle)->addText('NIP', ['bold' => true], ['alignment' => Jc::CENTER]);
-                $table->addCell(1500, $cellStyle)->addText('BAGIAN', ['bold' => true], ['alignment' => Jc::CENTER]);
+                $table->addCell(1500, $cellStyle)->addText('BIDANG', ['bold' => true], ['alignment' => Jc::CENTER]);
                 $table->addCell(1500, $cellStyle)->addText('KETERANGAN', ['bold' => true], ['alignment' => Jc::CENTER]);
 
                 // Data rows (max 18)
@@ -471,7 +471,7 @@ class Laporan extends BaseController
             $html .= '<th width="5%">NO</th>';
             $html .= '<th width="30%">NAMA</th>';
             $html .= '<th width="25%">NIP</th>';
-            $html .= '<th width="20%">BAGIAN</th>';
+            $html .= '<th width="20%">BIDANG</th>';
             $html .= '<th width="20%">KETERANGAN</th>';
             $html .= '</tr></thead><tbody>';
 

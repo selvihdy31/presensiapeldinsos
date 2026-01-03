@@ -44,17 +44,17 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Bagian <span class="text-danger">*</span></label>
+                        <label class="form-label">Bidang <span class="text-danger">*</span></label>
                         <select class="form-select" name="bagian" required>
-                            <option value="">-- Pilih Bagian --</option>
+                            <option value="">-- Pilih Bidang --</option>
                             <option value="sekretariat" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'sekretariat') ? 'selected' : '' ?>>
                                 Sekretariat
                             </option>
                             <option value="rehlinjamsos" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'rehlinjamsos') ? 'selected' : '' ?>>
-                                Rehlin Jamsos
+                                Rehlinjamsos
                             </option>
                             <option value="dayasos" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'dayasos') ? 'selected' : '' ?>>
-                                Daya Sos
+                                Dayasos
                             </option>
                         </select>
                     </div>

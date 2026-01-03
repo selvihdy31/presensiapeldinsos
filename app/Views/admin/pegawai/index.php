@@ -32,7 +32,7 @@
                         <th>NIP</th>
                         <th>Nama</th>
                         <th>Username</th>
-                        <th>Bagian</th>
+                        <th>Bidang</th>
                         <th>Status</th>
                         <th>Tanggal Dibuat</th>
                         <th>Aksi</th>

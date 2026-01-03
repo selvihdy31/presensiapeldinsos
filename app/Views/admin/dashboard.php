@@ -7,12 +7,12 @@
         <form method="get" action="<?= base_url('admin/dashboard') ?>" class="row g-3 align-items-center">
             <div class="col-auto">
                 <label class="form-label mb-0 fw-bold">
-                    <i class="bi bi-funnel"></i> Filter Berdasarkan Bagian:
+                    <i class="bi bi-funnel"></i> Filter Berdasarkan Bidang:
                 </label>
             </div>
             <div class="col-auto">
                 <select name="bagian" class="form-select" onchange="this.form.submit()">
-                    <option value="">Semua Bagian</option>
+                    <option value="">Semua Bidang</option>
                     <option value="sekretariat" <?= isset($selected_bagian) && $selected_bagian == 'sekretariat' ? 'selected' : '' ?>>
                         Sekretariat
                     </option>
@@ -49,7 +49,7 @@
                                 <?= ucfirst($selected_bagian) ?>
                             </small>
                         <?php else: ?>
-                            <small class="opacity-75">Semua Bagian</small>
+                            <small class="opacity-75">Semua Bidang</small>
                         <?php endif; ?>
                     </div>
                     <div style="font-size: 50px; opacity: 0.3;">
@@ -245,7 +245,7 @@
                         <tr>
                             <th>NIP</th>
                             <th>Nama</th>
-                            <th>Bagian</th>
+                            <th>Bidang</th>
                             <th>Waktu</th>
                             <th>Keterangan</th>
                             <th>Lokasi</th>
