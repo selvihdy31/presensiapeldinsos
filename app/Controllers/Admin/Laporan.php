@@ -473,7 +473,7 @@ class Laporan extends BaseController
             .footer-right { display: table-cell; width: 50%; text-align: center; vertical-align: top; }
             .keterangan { margin-top: 0; }
             .signature div { margin: 5px 0; }
-            .signature-space { margin-top: 140px; margin-bottom: 7px; }
+            .signature-space { height: 80px; }
         </style></head><body>';
 
         $dateIndex = 0;
@@ -548,7 +548,8 @@ class Laporan extends BaseController
             $html .= '<div>Kepala Dinas Sosial</div>';
             $html .= '<div>Kabupaten Batang</div>';
             // Jarak kosong untuk tanda tangan (lebih lebar untuk PDF)
-            $html .= '<div class="signature-space">&nbsp;</div>';
+            // $html .= '<div class="signature-space">&nbsp;</div>';
+            $html .= '<br><br><br><br><br>';
             $html .= '<div><strong><u>WILLOPO, AP., M.M.</u></strong></div>';
             $html .= '<div>Pembina Utama Muda</div>';
             $html .= '<div>NIP.19740502 199311 1 001</div>';
