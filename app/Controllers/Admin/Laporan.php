@@ -29,8 +29,8 @@ class Laporan extends BaseController
         if ($this->request->getGet('user_id')) {
             $filters['user_id'] = $this->request->getGet('user_id');
         }
-        if ($this->request->getGet('bagian')) {
-            $filters['bagian'] = $this->request->getGet('bagian');
+        if ($this->request->getGet('bidang')) {
+            $filters['bidang'] = $this->request->getGet('bidang');
         }
         if ($this->request->getGet('tanggal')) {
             $filters['tanggal'] = $this->request->getGet('tanggal');
@@ -97,10 +97,13 @@ class Laporan extends BaseController
 
             $filename = 'daftar-hadir-apel-' . date('Y-m-d-His') . '.pdf';
 
+            // PERBAIKAN: Hapus exit setelah stream untuk menghindari double output
             $dompdf->stream($filename, [
                 'Attachment' => true,
                 'compress' => true
             ]);
+            
+            exit(); // Pastikan hanya ada satu exit
 
         } catch (\Exception $e) {
             log_message('error', 'Export PDF Error: ' . $e->getMessage());
@@ -148,20 +151,27 @@ class Laporan extends BaseController
                     }
                 }
 
-                // Title
-                $sheet->setCellValue('A' . $row, 'DAFTAR HADIR APEL PAGI DINAS SOSIAL KAB. BATANG');
+                // Title - Baris 1
+                $sheet->setCellValue('A' . $row, 'DAFTAR HADIR APEL PAGI');
                 $sheet->mergeCells('A' . $row . ':E' . $row);
                 $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row++;
 
-                // HARI/TANGGAL (dipindah ke bawah judul)
+                // Title - Baris 2
+                $sheet->setCellValue('A' . $row, 'DINAS SOSIAL KAB. BATANG');
+                $sheet->mergeCells('A' . $row . ':E' . $row);
+                $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
+                $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $row++;
+
+                // HARI/TANGGAL
                 $sheet->setCellValue('A' . $row, 'HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)));
                 $sheet->mergeCells('A' . $row . ':E' . $row);
                 $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row += 2;
 
-                // Table header (tanpa kolom PARAF)
+                // Table header
                 $headerRow = $row;
                 $sheet->setCellValue('A' . $headerRow, 'NO');
                 $sheet->setCellValue('B' . $headerRow, 'NAMA');
@@ -178,7 +188,7 @@ class Laporan extends BaseController
                     ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row++;
 
-                // Data rows (max 18 baris sesuai template)
+                // Data rows (max 18 baris)
                 $no = 1;
                 for ($i = 0; $i < 18; $i++) {
                     if (isset($attendances[$i])) {
@@ -186,7 +196,7 @@ class Laporan extends BaseController
                         $sheet->setCellValue('A' . $row, $no);
                         $sheet->setCellValue('B' . $row, $p['nama']);
                         $sheet->setCellValue('C' . $row, $p['nip']);
-                        $sheet->setCellValue('D' . $row, $this->_getBagianLabel($p['bagian']));
+                        $sheet->setCellValue('D' . $row, $this->_getBidangLabel($p['bidang']));
                         $sheet->setCellValue('E' . $row, strtoupper($p['keterangan']));
                     } else {
                         $sheet->setCellValue('A' . $row, $no);
@@ -199,11 +209,11 @@ class Laporan extends BaseController
                     $no++;
                 }
 
-                // Keterangan section (kiri) dan TTD (kanan) - sejajar
+                // Keterangan section (kiri) dan TTD (kanan)
                 $row++;
                 $keteranganRow = $row;
                 
-                // Bagian kiri: Keterangan jumlah hadir/tidak hadir
+                // Bagian kiri: Keterangan
                 $sheet->setCellValue('A' . $row, 'KETERANGAN :');
                 $sheet->getStyle('A' . $row)->getFont()->setBold(true);
                 $row++;
@@ -211,7 +221,7 @@ class Laporan extends BaseController
                 $row++;
                 $sheet->setCellValue('A' . $row, 'TIDAK HADIR = ' . $jumlahTidakHadir);
 
-                // Bagian kanan: TTD - mulai dari row yang sama dengan KETERANGAN
+                // Bagian kanan: TTD
                 $ttdRow = $keteranganRow;
                 $sheet->setCellValue('D' . $ttdRow, 'Kepala Dinas Sosial');
                 $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
@@ -221,8 +231,8 @@ class Laporan extends BaseController
                 $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
                 $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 
-                // Tambah jarak kosong (3 baris) antara "Kabupaten Batang" dan nama
-                $ttdRow += 3;
+                // Tambah jarak kosong (4 baris) untuk TTD
+                $ttdRow += 4;
                 
                 $sheet->setCellValue('D' . $ttdRow, 'WILLOPO, AP., M.M.');
                 $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
@@ -237,7 +247,7 @@ class Laporan extends BaseController
                 $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
                 $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-                // Border untuk tabel (tanpa kolom F)
+                // Border untuk tabel
                 $styleArray = [
                     'borders' => [
                         'allBorders' => [
@@ -247,7 +257,7 @@ class Laporan extends BaseController
                 ];
                 $sheet->getStyle('A' . $headerRow . ':E' . ($headerRow + 18))->applyFromArray($styleArray);
 
-                // Column widths (tanpa kolom F)
+                // Column widths
                 $sheet->getColumnDimension('A')->setWidth(5);
                 $sheet->getColumnDimension('B')->setWidth(30);
                 $sheet->getColumnDimension('C')->setWidth(20);
@@ -320,14 +330,21 @@ class Laporan extends BaseController
                     'marginBottom' => 600,
                 ]);
 
-                // Title
+                // Title - Baris 1
                 $section->addText(
-                    'DAFTAR HADIR APEL PAGI DINAS SOSIAL KAB. BATANG',
+                    'DAFTAR HADIR APEL PAGI',
                     ['bold' => true, 'size' => 14],
                     ['alignment' => Jc::CENTER]
                 );
                 
-                // HARI/TANGGAL (dipindah ke bawah judul)
+                // Title - Baris 2
+                $section->addText(
+                    'DINAS SOSIAL KAB. BATANG',
+                    ['bold' => true, 'size' => 14],
+                    ['alignment' => Jc::CENTER]
+                );
+                
+                // HARI/TANGGAL
                 $section->addText(
                     'HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)),
                     ['size' => 11],
@@ -335,7 +352,7 @@ class Laporan extends BaseController
                 );
                 $section->addTextBreak(2);
 
-                // Table (tanpa kolom PARAF)
+                // Table
                 $cellStyle = [
                     'borderSize' => 6,
                     'borderColor' => '000000',
@@ -348,7 +365,7 @@ class Laporan extends BaseController
                     'unit' => 'pct'
                 ]);
 
-                // Header row (tanpa PARAF)
+                // Header row
                 $table->addRow(400);
                 $table->addCell(1000, $cellStyle)->addText('NO', ['bold' => true], ['alignment' => Jc::CENTER]);
                 $table->addCell(3500, $cellStyle)->addText('NAMA', ['bold' => true], ['alignment' => Jc::CENTER]);
@@ -364,7 +381,7 @@ class Laporan extends BaseController
                         $table->addCell(1000, $cellStyle)->addText(($i + 1), null, ['alignment' => Jc::CENTER]);
                         $table->addCell(3500, $cellStyle)->addText($p['nama']);
                         $table->addCell(2500, $cellStyle)->addText($p['nip']);
-                        $table->addCell(1500, $cellStyle)->addText($this->_getBagianLabel($p['bagian']), null, ['alignment' => Jc::CENTER]);
+                        $table->addCell(1500, $cellStyle)->addText($this->_getBidangLabel($p['bidang']), null, ['alignment' => Jc::CENTER]);
                         $table->addCell(1500, $cellStyle)->addText(strtoupper($p['keterangan']), null, ['alignment' => Jc::CENTER]);
                     } else {
                         $table->addCell(1000, $cellStyle)->addText(($i + 1), null, ['alignment' => Jc::CENTER]);
@@ -377,7 +394,7 @@ class Laporan extends BaseController
 
                 $section->addTextBreak(1);
 
-                // Buat tabel untuk layout 2 kolom (keterangan di kiri, TTD di kanan)
+                // Layout 2 kolom (keterangan di kiri, TTD di kanan)
                 $layoutTable = $section->addTable([
                     'borderSize' => 0,
                     'borderColor' => 'FFFFFF',
@@ -398,15 +415,17 @@ class Laporan extends BaseController
                 $rightCell->addText('Kepala Dinas Sosial', null, ['alignment' => Jc::CENTER]);
                 $rightCell->addText('Kabupaten Batang', null, ['alignment' => Jc::CENTER]);
                 
-                // Tambah jarak kosong (3 textbreak) antara "Kabupaten Batang" dan nama
-                $rightCell->addTextBreak(3);
+                // Tambah jarak kosong (4 textbreak) untuk TTD
+                $rightCell->addTextBreak(4);
                 
                 $rightCell->addText('WILLOPO, AP., M.M.', ['bold' => true, 'underline' => 'single'], ['alignment' => Jc::CENTER]);
                 $rightCell->addText('Pembina Utama Muda', null, ['alignment' => Jc::CENTER]);
                 $rightCell->addText('NIP.19740502 199311 1 001', null, ['alignment' => Jc::CENTER]);
 
-                // Page break for next date
-                $section->addPageBreak();
+                // Page break for next date (jika ada lebih dari 1 tanggal)
+                if ($date !== array_key_last($groupedData)) {
+                    $section->addPageBreak();
+                }
             }
 
             $filename = 'daftar-hadir-apel-' . date('Y-m-d-His') . '.docx';
@@ -434,7 +453,7 @@ class Laporan extends BaseController
             body { font-family: Arial, sans-serif; font-size: 11px; }
             .page { page-break-after: always; padding: 20px; }
             .header { text-align: center; margin-bottom: 10px; }
-            .title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+            .title { text-align: center; font-size: 14px; font-weight: bold; margin: 2px 0; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
             th, td { border: 1px solid #000; padding: 8px; text-align: left; }
             th { background-color: #ddd; font-weight: bold; text-align: center; }
@@ -444,9 +463,10 @@ class Laporan extends BaseController
             .footer-right { display: table-cell; width: 50%; text-align: center; vertical-align: top; }
             .keterangan { margin-top: 0; }
             .signature div { margin: 5px 0; }
-            .signature-space { margin-top: 100px; margin-bottom: 5px; }
+            .signature-space { margin-top: 140px; margin-bottom: 5px; }
         </style></head><body>';
 
+        $isFirst = true;
         foreach ($groupedData as $date => $attendances) {
             // Hitung jumlah hadir dan tidak hadir
             $jumlahHadir = 0;
@@ -459,12 +479,21 @@ class Laporan extends BaseController
                 }
             }
 
+            // Hanya tambahkan page break jika bukan halaman pertama
+            if (!$isFirst) {
+                $html .= '<div style="page-break-before: always;"></div>';
+            }
+            $isFirst = false;
+
             $html .= '<div class="page">';
             
-            // Title
-            $html .= '<div class="title">DAFTAR HADIR APEL PAGI DINAS SOSIAL KAB. BATANG</div>';
+            // Title - Baris 1
+            $html .= '<div class="title">DAFTAR HADIR APEL PAGI</div>';
             
-            // HARI/TANGGAL (dipindah ke bawah judul)
+            // Title - Baris 2
+            $html .= '<div class="title">DINAS SOSIAL KAB. BATANG</div>';
+            
+            // HARI/TANGGAL
             $html .= '<div class="header">HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)) . '</div>';
             
             $html .= '<table><thead><tr>';
@@ -482,7 +511,7 @@ class Laporan extends BaseController
                     $html .= '<td class="center">' . ($i + 1) . '</td>';
                     $html .= '<td>' . $p['nama'] . '</td>';
                     $html .= '<td>' . $p['nip'] . '</td>';
-                    $html .= '<td class="center">' . $this->_getBagianLabel($p['bagian']) . '</td>';
+                    $html .= '<td class="center">' . $this->_getBidangLabel($p['bidang']) . '</td>';
                     $html .= '<td class="center">' . strtoupper($p['keterangan']) . '</td>';
                 } else {
                     $html .= '<td class="center">' . ($i + 1) . '</td>';
@@ -510,7 +539,7 @@ class Laporan extends BaseController
             $html .= '<div class="signature">';
             $html .= '<div>Kepala Dinas Sosial</div>';
             $html .= '<div>Kabupaten Batang</div>';
-            // Jarak kosong untuk tanda tangan (~3 baris)
+            // Jarak kosong yang lebih lebar untuk tanda tangan
             $html .= '<div class="signature-space">&nbsp;</div>';
             $html .= '<div><strong><u>WILLOPO, AP., M.M.</u></strong></div>';
             $html .= '<div>Pembina Utama Muda</div>';
@@ -537,16 +566,16 @@ class Laporan extends BaseController
     }
 
     /**
-     * Helper function untuk mendapatkan label bagian (tanpa "Sekretariat")
+     * Helper function untuk mendapatkan label bidang
      */
-    private function _getBagianLabel($bagian)
+    private function _getBidangLabel($bidang)
     {
         $labels = [
             'sekretariat' => 'Sekretariat',
             'rehlinjamsos' => 'Rehlinjamsos',
             'dayasos' => 'Dayasos'
         ];
-        return isset($labels[$bagian]) ? $labels[$bagian] : '-';
+        return isset($labels[$bidang]) ? $labels[$bidang] : '-';
     }
 
     /**
@@ -559,8 +588,8 @@ class Laporan extends BaseController
         if ($this->request->getGet('user_id')) {
             $filters['user_id'] = $this->request->getGet('user_id');
         }
-        if ($this->request->getGet('bagian')) {
-            $filters['bagian'] = $this->request->getGet('bagian');
+        if ($this->request->getGet('bidang')) {
+            $filters['bidang'] = $this->request->getGet('bidang');
         }
         if ($this->request->getGet('tanggal')) {
             $filters['tanggal'] = $this->request->getGet('tanggal');
