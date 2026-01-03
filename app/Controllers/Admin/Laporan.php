@@ -473,7 +473,7 @@ class Laporan extends BaseController
             .footer-right { display: table-cell; width: 50%; text-align: center; vertical-align: top; }
             .keterangan { margin-top: 0; }
             .signature div { margin: 5px 0; }
-            .signature-space { margin-top: 120px; margin-bottom: 5px; }
+            .signature-space { margin-top: 140px; margin-bottom: 7px; }
         </style></head><body>';
 
         $dateIndex = 0;
