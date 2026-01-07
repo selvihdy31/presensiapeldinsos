@@ -37,6 +37,12 @@ if (getcwd() . DIRECTORY_SEPARATOR !== FCPATH) {
     chdir(FCPATH);
 }
 
+// --------------------------------------------------------------------
+// DISABLE DEBUG TOOLBAR (PRODUCTION)
+// --------------------------------------------------------------------
+define('CI_DEBUG', false);
+
+
 /*
  *---------------------------------------------------------------
  * BOOTSTRAP THE APPLICATION
