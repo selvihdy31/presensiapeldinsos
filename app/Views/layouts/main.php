@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="<?= base_url('favicon.ico?v=2') ?>">
+    <link rel="icon" type="image/png" href="<?= base_url('assets/dinsos.png?v=2') ?>">
     <title><?= $title ?? 'Dashboard' ?> - Sistem Absensi</title>
     
     <!-- Bootstrap 5 -->
