@@ -62,7 +62,7 @@
     
     <!-- Sudah Presensi Hari Ini -->
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ddff03ff 0%, #38ef7d 100%);">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #33bd11ff 0%, #38ef7d 100%);">
             <div class="card-body text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
