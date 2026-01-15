@@ -69,13 +69,12 @@
         }
         .watermark {
             text-align: center;
-            padding: 15px 30px;
-            background: #f8f9fa;
-            border-top: 2px solid #e9ecef;
+            padding: 15px 0;
         }
         .watermark small {
-            color: #6c757d;
+            color: #ffffff;
             font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -139,7 +138,7 @@
             </small>
         </div> -->
         <div class="watermark">
-                <small>Sistem by Selvi Hidayah</small>
+            <small>Sistem by Selvi Hidayah</small>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
