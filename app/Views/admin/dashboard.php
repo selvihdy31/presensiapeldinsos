@@ -312,6 +312,9 @@
             </div>
         <?php endif; ?>
     </div>
+    <div class="watermark">
+        <small>Sistem by Selvi Hidayah</small>
+    </div>
 </div>
 
 <style>
@@ -321,6 +324,16 @@
     .hover-lift:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+    .watermark {
+        text-align: center;
+        padding: 15px 30px;
+        background: #f8f9fa;
+        border-top: 2px solid #e9ecef;
+    }
+    .watermark small {
+        color: #6c757d;
+        font-weight: 500;
     }
 </style>
 

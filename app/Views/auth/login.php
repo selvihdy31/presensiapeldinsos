@@ -67,6 +67,16 @@
             text-align: center;
             margin-top: 20px;
         }
+        .watermark {
+            text-align: center;
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e9ecef;
+        }
+        .watermark small {
+            color: #6c757d;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -128,12 +138,10 @@
                 &copy; <?= date('Y') ?> Sistem Absensi Pegawai
             </small>
         </div> -->
+        <div class="watermark">
+                <small>Sistem by Selvi Hidayah</small>
+        </div>
     </div>
-
-    <div class="watermark-footer">
-            <i class="bi bi-heart-fill"></i> Sistem by <strong>Selvi Hidayah</strong> &copy; <?= date('Y') ?>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
