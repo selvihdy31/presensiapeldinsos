@@ -112,6 +112,7 @@
         /* Content Area */
         .content-area {
             padding: 30px;
+            padding-bottom: 60px;
         }
         
         /* Cards */
@@ -127,6 +128,35 @@
             border-bottom: 2px solid #f0f0f0;
             padding: 15px 20px;
             border-radius: 15px 15px 0 0 !important;
+        }
+        
+        /* Watermark Footer */
+        .watermark-footer {
+            position: fixed;
+            bottom: 0;
+            left: var(--sidebar-width);
+            right: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 999;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .watermark-footer i {
+            color: #ffd700;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
         }
         
         /* Responsive */
@@ -158,6 +188,12 @@
             
             .content-area {
                 padding: 15px;
+                padding-bottom: 60px;
+            }
+            
+            .watermark-footer {
+                left: 0;
+                font-size: 11px;
             }
         }
         
@@ -274,6 +310,11 @@
             <?php endif; ?>
             
             <?= $this->renderSection('content') ?>
+        </div>
+        
+        <!-- Watermark Footer -->
+        <div class="watermark-footer">
+            <i class="bi bi-heart-fill"></i> Sistem by <strong>Selvi Hidayah</strong> &copy; <?= date('Y') ?>
         </div>
     </div>
     
