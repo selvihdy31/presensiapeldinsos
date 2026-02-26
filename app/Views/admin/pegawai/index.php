@@ -119,7 +119,7 @@
     <div class="modal-dialog modal-md">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-diagram-3"></i> Kelola Bagian</h5>
+                <h5 class="modal-title"><i class="bi bi-diagram-3"></i> Kelola Bidang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -127,7 +127,7 @@
                 <!-- Form tambah bagian baru -->
                 <form action="<?= base_url('admin/bagian/store') ?>" method="POST" class="mb-4">
                     <?= csrf_field() ?>
-                    <label class="form-label fw-bold">Tambah Bagian Baru</label>
+                    <label class="form-label fw-bold">Tambah Bidang Baru</label>
                     <div class="input-group">
                         <input type="text"
                                name="nama"
@@ -139,20 +139,20 @@
                             <i class="bi bi-plus-lg"></i> Tambah
                         </button>
                     </div>
-                    <small class="text-muted">Kode bagian akan dibuat otomatis dari nama.</small>
+                    <small class="text-muted">Kode bidang akan dibuat otomatis dari nama.</small>
                 </form>
 
                 <hr>
 
                 <!-- Daftar bagian yang sudah ada -->
-                <label class="form-label fw-bold">Daftar Bagian</label>
+                <label class="form-label fw-bold">Daftar Bidang</label>
                 <?php if(empty($daftarBagian)): ?>
-                    <p class="text-muted small">Belum ada bagian.</p>
+                    <p class="text-muted small">Belum ada bidang.</p>
                 <?php else: ?>
                     <table class="table table-sm table-bordered mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Nama Bagian</th>
+                                <th>Nama Bidang</th>
                                 <th>Kode</th>
                                 <th class="text-center" width="80">Hapus</th>
                             </tr>

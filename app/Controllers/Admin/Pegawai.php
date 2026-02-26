@@ -12,15 +12,17 @@ class Pegawai extends BaseController
 
     public function __construct()
     {
-        $this->userModel  = new UserModel();
+        $this->userModel   = new UserModel();
         $this->bagianModel = new BagianModel();
     }
 
     public function index()
     {
         $data = [
-            'title'   => 'Manajemen Pegawai',
-            'pegawai' => $this->userModel->where('role', 'pegawai')->findAll()
+            'title'         => 'Manajemen Pegawai',
+            'pegawai'       => $this->userModel->where('role', 'pegawai')->findAll(),
+            'bagianOptions' => $this->bagianModel->getAsOptions(),  // untuk badge warna di tabel
+            'daftarBagian'  => $this->bagianModel->findAll(),       // untuk modal kelola bagian
         ];
         return view('admin/pegawai/index', $data);
     }
@@ -29,7 +31,7 @@ class Pegawai extends BaseController
     {
         return view('admin/pegawai/create', [
             'title'         => 'Tambah Pegawai',
-            'bagianOptions' => $this->bagianModel->getAsOptions()
+            'bagianOptions' => $this->bagianModel->getAsOptions(),
         ]);
     }
 
@@ -44,7 +46,7 @@ class Pegawai extends BaseController
 
         $errors = [
             'nip'      => ['is_unique' => 'NIP sudah terdaftar'],
-            'username' => ['is_unique' => 'Username sudah digunakan']
+            'username' => ['is_unique' => 'Username sudah digunakan'],
         ];
 
         if (!$this->validate($rules, $errors)) {
@@ -60,7 +62,7 @@ class Pegawai extends BaseController
             'password' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
             'bagian'   => $this->request->getPost('bagian'),
             'role'     => 'pegawai',
-            'status'   => 'aktif'
+            'status'   => 'aktif',
         ];
 
         $this->userModel->insert($data);
@@ -78,13 +80,11 @@ class Pegawai extends BaseController
                 ->with('error', 'Pegawai tidak ditemukan');
         }
 
-        $data = [
+        return view('admin/pegawai/edit', [
             'title'         => 'Edit Pegawai',
             'pegawai'       => $pegawai,
-            'bagianOptions' => $this->bagianModel->getAsOptions() // <-- fix
-        ];
-
-        return view('admin/pegawai/edit', $data);
+            'bagianOptions' => $this->bagianModel->getAsOptions(),
+        ]);
     }
 
     public function update($id)
@@ -138,10 +138,12 @@ class Pegawai extends BaseController
                 ->with('error', 'Pegawai tidak ditemukan');
         }
 
-        $newStatus = ($pegawai['status'] == 'aktif') ? 'nonaktif' : 'aktif';
+        $newStatus = ($pegawai['status'] === 'aktif') ? 'nonaktif' : 'aktif';
         $this->userModel->update($id, ['status' => $newStatus]);
 
-        $message = ($newStatus == 'aktif') ? 'Pegawai berhasil diaktifkan' : 'Pegawai berhasil dinonaktifkan';
+        $message = ($newStatus === 'aktif')
+            ? 'Pegawai berhasil diaktifkan'
+            : 'Pegawai berhasil dinonaktifkan';
 
         return redirect()->to(base_url('admin/pegawai'))
             ->with('success', $message);
