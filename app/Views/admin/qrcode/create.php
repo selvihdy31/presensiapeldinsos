@@ -117,7 +117,7 @@
                             <li><strong>Waktu Selesai: Jam 07:00 - 12:59 WIB</strong></li>
                             <li>Pegawai hanya bisa presensi dalam rentang waktu tersebut</li>
                             <li>Sistem otomatis menonaktifkan QR setelah waktu selesai</li>
-                            <li>Pegawai yang terlambat lebih dari 15 menit akan tercatat "Terlambat"</li>
+                            <!-- <li>Pegawai yang terlambat lebih dari 15 menit akan tercatat "Terlambat"</li> -->
                         </ul>
                     </div>
 

@@ -83,8 +83,8 @@
         <div class="login-card">
             <div class="login-header">
                 <img src="<?= base_url('assets/dinsos.png') ?>" alt="Logo Dinsos" class="login-logo">
-                <h3 class="mb-0">Sistem Absensi</h3>
-                <p class="mb-0 small">Login untuk melanjutkan</p>
+                <h3 class="mb-0">Sistem Presensi Dinsos Batang</h3>
+                <!-- <p class="mb-0 small">Login untuk melanjutkan</p> -->
             </div>
             <div class="login-body">
                 <?php if(session()->getFlashdata('error')): ?>

@@ -17,7 +17,7 @@
                         <strong>Perhatian!</strong>
                         <ul class="mb-0 mt-2">
                             <li><strong>Hanya 1 pengajuan ijin per hari diperbolehkan</strong></li>
-                            <li>Pengajuan ijin hanya bisa untuk tanggal hari ini atau sebelumnya</li>
+                            <li>Pengajuan ijin bisa untuk tanggal berapa saja</li>
                             <li>Tidak dapat mengajukan ijin untuk tanggal yang sudah ada presensi</li>
                             <li>Keterangan wajib diisi minimal 10 karakter</li>
                         </ul>
@@ -75,11 +75,10 @@
                                class="form-control form-control-lg" 
                                name="tanggal" 
                                id="tanggal"
-                               max="<?= date('Y-m-d') ?>"
-                               value="<?= old('tanggal') ?>"
+                               value="<?= old('tanggal', date('Y-m-d')) ?>"
                                required>
                         <small class="text-muted">
-                            <i class="bi bi-info-circle"></i> Pilih tanggal ijin (maksimal hari ini)
+                            <i class="bi bi-info-circle"></i> Pilih tanggal ijin
                         </small>
                     </div>
 
@@ -163,13 +162,37 @@
 
 <?= $this->section('scripts') ?>
 <script>
-    // Character counter
+    // Referensi elemen
     const keteranganInput = document.getElementById('keterangan_ijin');
-    const charCount = document.getElementById('char-count');
-    
+    const charCount       = document.getElementById('char-count');
+    const tanggalInput    = document.getElementById('tanggal');
+
+    // ===== AUTO-SET TANGGAL HARI INI =====
+    // Gunakan value dari PHP (old() atau date()) — sudah ter-set di value attribute.
+    // Trigger event change agar preview tanggal langsung muncul saat halaman load.
+    function updatePreviewTanggal(value) {
+        if (value) {
+            // Tambah 'T00:00:00' agar tidak terjadi masalah timezone offset
+            const date    = new Date(value + 'T00:00:00');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('preview-tanggal').textContent = date.toLocaleDateString('id-ID', options);
+        } else {
+            document.getElementById('preview-tanggal').textContent = '-';
+        }
+    }
+
+    // Jalankan saat halaman dimuat
+    updatePreviewTanggal(tanggalInput.value);
+
+    // Update saat tanggal diubah
+    tanggalInput.addEventListener('change', function() {
+        updatePreviewTanggal(this.value);
+    });
+
+    // ===== CHARACTER COUNTER =====
     keteranganInput.addEventListener('input', function() {
         charCount.textContent = this.value.length;
-        
+
         if (this.value.length >= 10) {
             charCount.classList.remove('text-danger');
             charCount.classList.add('text-success');
@@ -177,49 +200,45 @@
             charCount.classList.remove('text-success');
             charCount.classList.add('text-danger');
         }
-        
-        // Update preview
+
+        // Update preview keterangan
         document.getElementById('preview-keterangan').textContent = this.value || '-';
     });
-    
-    // Date preview
-    const tanggalInput = document.getElementById('tanggal');
-    tanggalInput.addEventListener('change', function() {
-        if (this.value) {
-            const date = new Date(this.value);
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('preview-tanggal').textContent = date.toLocaleDateString('id-ID', options);
-        } else {
-            document.getElementById('preview-tanggal').textContent = '-';
-        }
-    });
-    
-    // Form validation
+
+    // Inisialisasi char count jika ada nilai dari old()
+    if (keteranganInput.value.length > 0) {
+        charCount.textContent = keteranganInput.value.length;
+        charCount.classList.add(keteranganInput.value.length >= 10 ? 'text-success' : 'text-danger');
+        document.getElementById('preview-keterangan').textContent = keteranganInput.value;
+    }
+
+    // ===== FORM VALIDATION =====
     document.getElementById('ijin-form').addEventListener('submit', function(e) {
         const keterangan = keteranganInput.value.trim();
-        const tanggal = tanggalInput.value;
-        
+        const tanggal    = tanggalInput.value;
+
         if (!tanggal) {
             e.preventDefault();
             alert('Tanggal ijin harus diisi!');
             tanggalInput.focus();
             return false;
         }
-        
+
         if (keterangan.length < 10) {
             e.preventDefault();
             alert('Keterangan ijin minimal 10 karakter!');
             keteranganInput.focus();
             return false;
         }
-        
+
         // Konfirmasi sebelum submit
-        const confirmSubmit = confirm(
+        const date          = new Date(tanggal + 'T00:00:00');
+        const tanggalDisplay = date.toLocaleDateString('id-ID');
+        const confirmSubmit  = confirm(
             'Anda hanya bisa mengajukan 1 ijin per hari.\n\n' +
-            'Apakah Anda yakin ingin mengajukan ijin untuk tanggal ' + 
-            new Date(tanggal).toLocaleDateString('id-ID') + '?'
+            'Apakah Anda yakin ingin mengajukan ijin untuk tanggal ' + tanggalDisplay + '?'
         );
-        
+
         if (!confirmSubmit) {
             e.preventDefault();
             return false;

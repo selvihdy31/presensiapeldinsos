@@ -1,105 +1,74 @@
 <?php
-
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
-use App\Models\UserModel;
 use App\Models\PresensiModel;
+use App\Models\UserModel;
 use App\Models\QrCodeModel;
+use App\Models\BagianModel;
 
 class Dashboard extends BaseController
 {
     public function index()
     {
-        // Cek role admin
         if (session()->get('role') !== 'admin') {
             return redirect()->to(base_url('pegawai/dashboard'));
         }
 
-        $userModel = new UserModel();
+        $userModel     = new UserModel();
         $presensiModel = new PresensiModel();
-        $qrModel = new QrCodeModel();
+        $qrModel       = new QrCodeModel();
+        $bagianModel   = new BagianModel();
 
-        // Ambil filter bagian dari query string
-        $bagian = $this->request->getGet('bagian');
+        $bagian        = $this->request->getGet('bagian');
+        $bagianOptions = $bagianModel->getAsOptions(); // ['sekretariat' => 'Sekretariat', ...]
 
-        // Hitung total pegawai berdasarkan bagian
+        // Total pegawai
         $totalPegawaiQuery = $userModel->where('role', 'pegawai')->where('status', 'aktif');
-        if (!empty($bagian)) {
-            $totalPegawaiQuery->where('bagian', $bagian);
-        }
+        if (!empty($bagian)) $totalPegawaiQuery->where('bagian', $bagian);
         $totalPegawai = $totalPegawaiQuery->countAllResults();
 
-        // Ambil semua ID pegawai aktif berdasarkan bagian
+        // ID pegawai aktif berdasarkan filter bagian
         $pegawaiQuery = $userModel->where('role', 'pegawai')->where('status', 'aktif');
-        if (!empty($bagian)) {
-            $pegawaiQuery->where('bagian', $bagian);
-        }
+        if (!empty($bagian)) $pegawaiQuery->where('bagian', $bagian);
         $pegawaiList = $pegawaiQuery->findAll();
-        $pegawaiIds = array_column($pegawaiList, 'id');
+        $pegawaiIds  = array_column($pegawaiList, 'id');
 
-        // Hitung pegawai yang sudah presensi hari ini
-        $presensiHariIniQuery = $presensiModel
-            ->where('DATE(waktu)', date('Y-m-d'));
+        // Presensi hari ini
+        $presensiHariIniQuery = $presensiModel->where('DATE(waktu)', date('Y-m-d'));
         if (!empty($bagian) && !empty($pegawaiIds)) {
             $presensiHariIniQuery->whereIn('user_id', $pegawaiIds);
         }
         $presensiHariIni = $presensiHariIniQuery->countAllResults();
+        $belumPresensi   = $totalPegawai - $presensiHariIni;
 
-        // Hitung pegawai yang belum presensi
-        $belumPresensi = $totalPegawai - $presensiHariIni;
+        // QR aktif
+        $qrAktif = $qrModel->where('status', 'aktif')->where('tanggal', date('Y-m-d'))->countAllResults();
 
-        // QR Code aktif (tidak perlu filter bagian)
-        $qrAktif = $qrModel
-            ->where('status', 'aktif')
-            ->where('tanggal', date('Y-m-d'))
-            ->countAllResults();
-
-        // Presensi terbaru dengan filter bagian
+        // Recent presensi
         $filters = [];
-        if (!empty($bagian)) {
-            $filters['bagian'] = $bagian;
-        }
-        $recentPresensi = $presensiModel->getPresensiWithUser($filters);
-        $recentPresensi = array_slice($recentPresensi, 0, 10);
+        if (!empty($bagian)) $filters['bagian'] = $bagian;
+        $recentPresensi = array_slice($presensiModel->getPresensiWithUser($filters), 0, 10);
 
-        // Statistik keterangan hari ini berdasarkan bagian
-        $hadirQuery = $presensiModel
-            ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'hadir');
-        if (!empty($bagian) && !empty($pegawaiIds)) {
-            $hadirQuery->whereIn('user_id', $pegawaiIds);
-        }
-        $hadirHariIni = $hadirQuery->countAllResults();
-        
-        // PERUBAHAN: Ganti dari 'terlambat' menjadi 'alpha'
-        $alphaQuery = $presensiModel
-            ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'alpha');
-        if (!empty($bagian) && !empty($pegawaiIds)) {
-            $alphaQuery->whereIn('user_id', $pegawaiIds);
-        }
-        $alphaHariIni = $alphaQuery->countAllResults();
-        
-        $ijinQuery = $presensiModel
-            ->where('DATE(waktu)', date('Y-m-d'))
-            ->where('keterangan', 'ijin');
-        if (!empty($bagian) && !empty($pegawaiIds)) {
-            $ijinQuery->whereIn('user_id', $pegawaiIds);
-        }
-        $ijinHariIni = $ijinQuery->countAllResults();
+        // Statistik keterangan
+        $buildQuery = function($ket) use ($presensiModel, $bagian, $pegawaiIds) {
+            $q = $presensiModel->where('DATE(waktu)', date('Y-m-d'))->where('keterangan', $ket);
+            if (!empty($bagian) && !empty($pegawaiIds)) $q->whereIn('user_id', $pegawaiIds);
+            return $q->countAllResults();
+        };
 
         $data = [
-            'title' => 'Dashboard Admin',
-            'total_pegawai' => $totalPegawai,
+            'title'            => 'Dashboard Admin',
+            'total_pegawai'    => $totalPegawai,
             'presensi_hari_ini' => $presensiHariIni,
-            'belum_presensi' => $belumPresensi,
-            'qr_aktif' => $qrAktif,
-            'hadir_hari_ini' => $hadirHariIni,
-            'alpha_hari_ini' => $alphaHariIni,  // PERUBAHAN: Ganti nama variabel
-            'ijin_hari_ini' => $ijinHariIni,
-            'recent_presensi' => $recentPresensi,
-            'selected_bagian' => $bagian
+            'belum_presensi'   => $belumPresensi,
+            'qr_aktif'         => $qrAktif,
+            'hadir_hari_ini'   => $buildQuery('hadir'),
+            'alpha_hari_ini'   => $buildQuery('alpha'),
+            'ijin_hari_ini'    => $buildQuery('ijin'),
+            'recent_presensi'  => $recentPresensi,
+            'selected_bagian'  => $bagian,
+            'bagianOptions'    => $bagianOptions,  // << inject ke view
         ];
 
         return view('admin/dashboard', $data);

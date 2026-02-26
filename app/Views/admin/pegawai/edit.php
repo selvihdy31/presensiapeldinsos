@@ -12,65 +12,43 @@
                     <div class="alert alert-danger">
                         <ul class="mb-0">
                             <?php foreach(session()->getFlashdata('errors') as $error): ?>
-                                <li><?= $error ?></li>
+                                <li><?= esc($error) ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
                 <?php endif; ?>
 
                 <form action="<?= base_url('admin/pegawai/update/' . $pegawai['id']) ?>" method="post" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
                     <div class="mb-3">
                         <label class="form-label">NIP <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nip" required 
-                               value="<?= $pegawai['nip'] ?>">
+                        <input type="text" class="form-control" name="nip" required value="<?= esc($pegawai['nip']) ?>">
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nama" required 
-                               value="<?= $pegawai['nama'] ?>">
+                        <input type="text" class="form-control" name="nama" required value="<?= esc($pegawai['nama']) ?>">
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label">Username <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="username" required 
-                               value="<?= $pegawai['username'] ?>">
+                        <input type="text" class="form-control" name="username" required value="<?= esc($pegawai['username']) ?>">
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label">Password Baru</label>
                         <input type="password" class="form-control" name="password">
                         <small class="text-muted">Kosongkan jika tidak ingin mengubah password</small>
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label">Bidang <span class="text-danger">*</span></label>
                         <select class="form-select" name="bagian" required>
                             <option value="">-- Pilih Bidang --</option>
-                            <option value="sekretariat" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'sekretariat') ? 'selected' : '' ?>>
-                                Sekretariat
-                            </option>
-                            <option value="rehlinjamsos" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'rehlinjamsos') ? 'selected' : '' ?>>
-                                Rehlinjamsos
-                            </option>
-                            <option value="dayasos" <?= (isset($pegawai['bagian']) && $pegawai['bagian'] == 'dayasos') ? 'selected' : '' ?>>
-                                Dayasos
-                            </option>
+                            <?php foreach($bagianOptions as $kode => $nama): ?>
+                                <option value="<?= esc($kode) ?>"
+                                    <?= ($pegawai['bagian'] == $kode) ? 'selected' : '' ?>>
+                                    <?= esc($nama) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
-                    
-                    <!-- <div class="mb-3">
-                        <label class="form-label">Foto Baru</label>
-                        <input type="file" class="form-control" name="foto" accept="image/*">
-                        <?php if(isset($pegawai['foto']) && $pegawai['foto']): ?>
-                            <div class="mt-2">
-                                <small class="text-muted">Foto saat ini: <?= $pegawai['foto'] ?></small><br>
-                                <img src="<?= base_url('uploads/pegawai/' . $pegawai['foto']) ?>" 
-                                     alt="Foto Pegawai" class="img-thumbnail mt-2" style="max-width: 200px;">
-                            </div>
-                        <?php endif; ?>
-                    </div> -->
-                    
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-warning">
                             <i class="bi bi-save"></i> Update

@@ -26,6 +26,7 @@ $routes->get('debug-presensi/form', 'DebugPresensi::form');
 $routes->post('debug-presensi/test-submit', 'DebugPresensi::testSubmit');
 $routes->post('debug-presensi/test-submit-with-session', 'DebugPresensi::testSubmitWithSession');
 
+
 // ============================================================
 // PEGAWAI ROUTES - TANPA FILTER UNTUK DEBUG
 // ============================================================
@@ -92,4 +93,8 @@ $routes->group('admin', ['filter' => 'auth:admin'], function($routes) {
     $routes->get('laporan/export-pdf', 'Admin\Laporan::exportPdf');
     $routes->get('laporan/export-word', 'Admin\Laporan::exportWord');
     $routes->get('laporan/export-excel', 'Admin\Laporan::exportExcel');
+
+    // ========== BAGIAN ==========
+    $routes->post('bagian/store',       'Admin\Bagian::store');
+    $routes->post('bagian/delete/(:num)', 'Admin\Bagian::delete/$1');
 });

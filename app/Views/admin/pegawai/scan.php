@@ -60,7 +60,7 @@
                 <?php endif; ?>
                 
                 <!-- Location Info -->
-                <div class="alert alert-warning mt-3">
+                <div id="location-alert" class="alert alert-warning mt-3">
                     <i class="bi bi-geo-alt"></i> 
                     <span id="location-status">Mendapatkan lokasi GPS...</span>
                 </div>
@@ -119,56 +119,111 @@
     </div>
 </div>
 
+<!-- Modal Lokasi Di Luar Radius -->
+<div class="modal fade" id="locationModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-warning">
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-geo-alt-fill text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="mb-2">Di Luar Jangkauan Kantor</h5>
+                <p id="location-modal-message" class="mb-3 text-muted small">
+                    Anda berada di luar radius kantor.
+                </p>
+                <button class="btn btn-warning btn-sm" onclick="tutupLocationModal()">
+                    <i class="bi bi-arrow-clockwise"></i> Coba Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
+    // ===== KONFIGURASI LOKASI KANTOR =====
+    const OFFICE_LAT   = <?= $office_lat ?? -6.9002095 ?>;
+    const OFFICE_LNG   = <?= $office_lng ?? 109.7166471 ?>;
+    const MAX_RADIUS_M = <?= $max_radius ?? 10 ?>;
+
     let html5QrCode;
-    let latitude = null;
-    let longitude = null;
-    let lokasi = 'Lokasi tidak tersedia';
+    let latitude     = null;
+    let longitude    = null;
+    let lokasi       = 'Lokasi tidak tersedia';
+    let lokasiValid  = false;
     let isSubmitting = false;
     const hasPresensi = <?= json_encode($has_presensi) ?>;
-    const baseUrl = '<?= base_url() ?>';
-    const submitUrl = baseUrl + 'pegawai/presensi/submit';
+    const baseUrl     = '<?= base_url() ?>';
+    const submitUrl   = baseUrl + 'pegawai/presensi/submit';
 
-    console.log('Submit URL:', submitUrl);
-    console.log('Has Presensi:', hasPresensi);
+    // ===== FORMULA HAVERSINE =====
+    function hitungJarak(lat1, lng1, lat2, lng2) {
+        const R    = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a    = Math.sin(dLat/2) * Math.sin(dLat/2)
+                   + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+                   * Math.sin(dLng/2) * Math.sin(dLng/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
 
-    // Get GPS Location
+    // ===== GET GPS LOCATION =====
     if (navigator.geolocation && !hasPresensi) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                latitude = position.coords.latitude;
+                latitude  = position.coords.latitude;
                 longitude = position.coords.longitude;
-                
-                document.getElementById('location-status').innerHTML = 
-                    '<i class="bi bi-check-circle"></i> Lokasi GPS: ' + 
-                    latitude.toFixed(6) + ', ' + longitude.toFixed(6);
-                
-                // Reverse Geocoding
+
+                const jarak      = hitungJarak(latitude, longitude, OFFICE_LAT, OFFICE_LNG);
+                const jarakBulat = Math.round(jarak);
+
+                if (jarak <= MAX_RADIUS_M) {
+                    // Dalam radius — tampilkan hijau
+                    lokasiValid = true;
+                    document.getElementById('location-alert').className = 'alert alert-success mt-3';
+                    document.getElementById('location-status').innerHTML =
+                        '<i class="bi bi-check-circle-fill"></i> Lokasi valid &mdash; Anda berada <strong>' +
+                        jarakBulat + ' meter</strong> dari kantor. Silakan scan QR Code.';
+                } else {
+                    // Di luar radius — tampilkan merah
+                    lokasiValid = false;
+                    document.getElementById('location-alert').className = 'alert alert-danger mt-3';
+                    document.getElementById('location-status').innerHTML =
+                        '<i class="bi bi-x-circle-fill"></i> Lokasi tidak valid &mdash; Anda berada <strong>' +
+                        jarakBulat + ' meter</strong> dari kantor. ' +
+                        'Presensi hanya diizinkan dalam radius <strong>' + MAX_RADIUS_M + ' meter</strong>.';
+                }
+
+                // Reverse Geocoding untuk nama lokasi
                 fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
                     .then(res => res.json())
                     .then(data => {
-                        if (data.display_name) {
-                            lokasi = data.display_name;
-                            document.getElementById('location-status').innerHTML = 
-                                '<i class="bi bi-check-circle"></i> ' + lokasi;
-                        }
+                        if (data.display_name) lokasi = data.display_name;
                     })
-                    .catch(err => {
+                    .catch(() => {
                         lokasi = `${latitude}, ${longitude}`;
                     });
             },
             (error) => {
-                document.getElementById('location-status').innerHTML = 
-                    '<i class="bi bi-exclamation-triangle"></i> GPS tidak aktif. Presensi tetap dapat dilakukan.';
-            }
+                lokasiValid = false;
+                const pesan = {
+                    1: 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.',
+                    2: 'Posisi tidak tersedia. Pastikan GPS aktif.',
+                    3: 'Waktu habis mendapatkan lokasi. Coba refresh halaman.'
+                };
+                document.getElementById('location-alert').className = 'alert alert-danger mt-3';
+                document.getElementById('location-status').innerHTML =
+                    '<i class="bi bi-exclamation-triangle-fill"></i> ' +
+                    (pesan[error.code] || 'GPS tidak aktif. Aktifkan GPS untuk melakukan presensi.');
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     }
     
-    // Initialize QR Scanner
+    // ===== INITIALIZE QR SCANNER =====
     if (!hasPresensi) {
         html5QrCode = new Html5Qrcode("qr-reader");
         
@@ -182,87 +237,90 @@
             { facingMode: "environment" },
             config,
             (decodedText) => {
-                console.log('QR Code detected:', decodedText);
                 showStatus('success', '<i class="bi bi-check-circle"></i> QR Code berhasil di-scan!');
                 
                 html5QrCode.stop().then(() => {
-                    console.log('Scanner stopped');
-                    setTimeout(() => {
-                        submitPresensi(decodedText);
-                    }, 500);
-                }).catch(err => {
-                    console.log('Error stopping scanner:', err);
+                    setTimeout(() => { submitPresensi(decodedText); }, 500);
+                }).catch(() => {
                     submitPresensi(decodedText);
                 });
             }
-        ).catch((err) => {
-            console.error('Camera error:', err);
+        ).catch(() => {
             showStatus('danger', 'Gagal mengakses kamera. Gunakan input manual.');
         });
     }
     
-    // ========== FUNCTION: Show Error Modal & Refresh ==========
+    // ===== MODAL ERROR TOKEN =====
     function showErrorModal(message) {
-        console.log('Showing error modal:', message);
+        if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} }
         
-        if (html5QrCode) {
-            try {
-                html5QrCode.stop();
-            } catch(e) {}
-        }
-        
-        // Update pesan error
-        document.getElementById('error-message').textContent = 
+        document.getElementById('error-message').textContent =
             message || 'Token tidak ditemukan atau sudah kadaluarsa';
         
-        // Tampilkan modal
         const errorModal = new bootstrap.Modal(
-            document.getElementById('errorModal'), 
+            document.getElementById('errorModal'),
             { backdrop: 'static', keyboard: false }
         );
         errorModal.show();
         
-        // Countdown & Refresh
         let countdown = 3;
-        const countdownInterval = setInterval(() => {
+        const iv = setInterval(() => {
             countdown--;
             document.getElementById('countdown').textContent = countdown;
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                console.log('Refreshing page...');
-                location.reload();
-            }
+            if (countdown <= 0) { clearInterval(iv); location.reload(); }
         }, 1000);
     }
+
+    // ===== MODAL LOKASI DILUAR RADIUS =====
+    let locationModalInstance = null;
+
+    function showLocationModal(message) {
+        document.getElementById('location-modal-message').textContent = message;
+        locationModalInstance = new bootstrap.Modal(
+            document.getElementById('locationModal'),
+            { backdrop: 'static', keyboard: false }
+        );
+        locationModalInstance.show();
+    }
+
+    function tutupLocationModal() {
+        if (locationModalInstance) {
+            locationModalInstance.hide();
+            locationModalInstance = null;
+        }
+        isSubmitting = false;
+        restartScanner();
+    }
     
-    // Submit Presensi Function
+    // ===== SUBMIT PRESENSI =====
     function submitPresensi(token, keterangan = 'hadir') {
-        if (isSubmitting) {
-            console.log('Already submitting...');
+        if (isSubmitting) return;
+
+        // ===== CEK LOKASI VALID SEBELUM SUBMIT =====
+        if (!lokasiValid) {
+            const msg = latitude !== null
+                ? `Anda berada di luar radius ${MAX_RADIUS_M} meter dari kantor. Presensi tidak dapat dilakukan.`
+                : 'Lokasi GPS belum tersedia. Pastikan GPS aktif dan izin lokasi sudah diberikan.';
+            showLocationModal(msg);
             return;
         }
-        
+
         isSubmitting = true;
-        console.log('Starting submit with token:', token.substring(0, 20) + '...');
         
-        // Show loading modal
-        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'), { backdrop: 'static', keyboard: false });
+        const loadingModal = new bootstrap.Modal(
+            document.getElementById('loadingModal'),
+            { backdrop: 'static', keyboard: false }
+        );
         loadingModal.show();
-        
         showStatus('info', '<i class="bi bi-clock"></i> Mengirim data presensi...');
         
-        // Prepare FormData
         const formData = new FormData();
-        formData.append('token', token);
+        formData.append('token',      token);
         formData.append('keterangan', keterangan);
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
-        formData.append('lokasi', lokasi);
+        formData.append('latitude',   latitude);
+        formData.append('longitude',  longitude);
+        formData.append('lokasi',     lokasi);
         
-        console.log('Form data prepared, sending to:', submitUrl);
-        
-        // Send POST request
         fetch(submitUrl, {
             method: 'POST',
             headers: {
@@ -272,119 +330,83 @@
             body: formData,
             credentials: 'same-origin'
         })
-        .then(response => {
-            console.log('Response received, status:', response.status);
-            console.log('Response type:', response.type);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Response JSON:', data);
             loadingModal.hide();
             
             if (data.success) {
-                console.log('✓ Presensi BERHASIL');
-                
-                // Show success modal
-                const successModal = new bootstrap.Modal(document.getElementById('successModal'), { backdrop: 'static', keyboard: false });
-                const status = data.data?.keterangan || 'Hadir';
-                document.getElementById('success-status').textContent = status;
+                const successModal = new bootstrap.Modal(
+                    document.getElementById('successModal'),
+                    { backdrop: 'static', keyboard: false }
+                );
+                document.getElementById('success-status').textContent = data.data?.keterangan || 'Hadir';
                 successModal.show();
                 
-                // PENTING: Disable scanner dan form sebelum redirect
-                if (html5QrCode) {
-                    try {
-                        html5QrCode.stop();
-                    } catch(e) {}
-                }
-                
-                // Redirect setelah 2 detik
-                setTimeout(() => {
-                    window.location.href = baseUrl + 'pegawai/presensi/riwayat';
-                }, 2000);
+                if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} }
+                setTimeout(() => { window.location.href = baseUrl + 'pegawai/presensi/riwayat'; }, 2000);
+
             } else {
-                console.log('✗ Presensi GAGAL:', data.message);
-                
-                // ========== PERBAIKAN: Deteksi Error Token Invalid ==========
-                if (data.message && (
-                    data.message.toLowerCase().includes('token') || 
-                    data.message.toLowerCase().includes('valid') || 
+                // ===== DETEKSI JENIS ERROR =====
+                if (data.type === 'location_out_of_range') {
+                    // Penolakan radius dari server (double-check keamanan)
+                    showLocationModal(data.message);
+
+                } else if (data.message && (
+                    data.message.toLowerCase().includes('token') ||
+                    data.message.toLowerCase().includes('valid') ||
                     data.message.toLowerCase().includes('qr') ||
                     data.message.toLowerCase().includes('tidak ditemukan') ||
                     data.message.toLowerCase().includes('kadaluarsa')
                 )) {
-                    // ERROR TOKEN INVALID → Show error modal & refresh
-                    console.log('Detected token invalid error');
+                    // Token invalid → modal + auto refresh
                     showErrorModal(data.message);
+
                 } else {
-                    // ERROR LAIN (sudah presensi, user invalid, dll) → Show alert & restart scanner
-                    console.log('Detected other error');
+                    // Error lain (sudah presensi, dsb) → alert + restart scanner
                     showStatus('danger', '<i class="bi bi-x-circle"></i> ' + data.message);
                     isSubmitting = false;
                     restartScanner();
                 }
             }
         })
-        .catch(err => {
-            console.error('✗ FETCH ERROR:', err);
+        .catch(() => {
             loadingModal.hide();
-            showStatus('danger', '<i class="bi bi-x-circle"></i> ' + err.message);
+            showStatus('danger', '<i class="bi bi-x-circle"></i> Gagal menghubungi server. Periksa koneksi internet.');
             isSubmitting = false;
-            
-            // Restart scanner
             restartScanner();
         });
     }
     
-    // Restart Scanner
+    // ===== RESTART SCANNER =====
     function restartScanner() {
-        console.log('Restarting scanner...');
         if (html5QrCode) {
-            try {
-                html5QrCode.stop();
-            } catch(e) {}
-            
+            try { html5QrCode.stop(); } catch(e) {}
             setTimeout(() => {
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
                 html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    config, 
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
-                        console.log('QR re-detected:', decodedText);
-                        html5QrCode.stop().then(() => {
-                            submitPresensi(decodedText);
-                        });
+                        html5QrCode.stop().then(() => { submitPresensi(decodedText); });
                     }
-                ).catch(e => {
-                    console.error('Error restarting scanner:', e);
-                });
+                ).catch(e => console.error('Error restarting scanner:', e));
             }, 1500);
         }
     }
     
-    // Manual Form Submit
+    // ===== MANUAL FORM SUBMIT =====
     document.getElementById('manual-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        
-        const token = document.getElementById('manual-token').value.trim();
+        const token      = document.getElementById('manual-token').value.trim();
         const keterangan = document.getElementById('manual-keterangan').value;
-        
         if (!token) {
             showStatus('warning', '<i class="bi bi-exclamation-triangle"></i> Token harus diisi!');
             return;
         }
-        
-        console.log('Manual submit with token:', token.substring(0, 20) + '...');
-        
-        if (html5QrCode) {
-            try {
-                html5QrCode.stop();
-            } catch(e) {}
-        }
-        
+        if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} }
         submitPresensi(token, keterangan);
     });
     
-    // Show Status Helper
+    // ===== SHOW STATUS HELPER =====
     function showStatus(type, message) {
         const statusDiv = document.getElementById('scan-status');
         if (statusDiv) {
@@ -393,15 +415,8 @@
         }
     }
     
-    // Cleanup
     window.addEventListener('beforeunload', () => {
-        if (html5QrCode) {
-            try {
-                html5QrCode.stop();
-            } catch(e) {}
-        }
+        if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} }
     });
-
-    console.log('Script loaded and ready');
 </script>
 <?= $this->endSection() ?>

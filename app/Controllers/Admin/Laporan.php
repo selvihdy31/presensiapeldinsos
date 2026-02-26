@@ -4,103 +4,66 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\PresensiModel;
 use App\Models\UserModel;
+use App\Models\BagianModel;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Style\Font;
 use PhpOffice\PhpWord\SimpleType\Jc;
 
 class Laporan extends BaseController
 {
     protected $presensiModel;
     protected $userModel;
+    protected $bagianModel;
+    protected $bagianOptions; // ['kode' => 'Nama', ...]
 
     public function __construct()
     {
         $this->presensiModel = new PresensiModel();
-        $this->userModel = new UserModel();
+        $this->userModel     = new UserModel();
+        $this->bagianModel   = new BagianModel();
+        $this->bagianOptions = $this->bagianModel->getAsOptions();
     }
 
     public function index()
     {
-        $filters = [];
-        
-        if ($this->request->getGet('user_id')) {
-            $filters['user_id'] = $this->request->getGet('user_id');
-        }
-        if ($this->request->getGet('bagian')) {
-            $filters['bagian'] = $this->request->getGet('bagian');
-        }
-        if ($this->request->getGet('tanggal')) {
-            $filters['tanggal'] = $this->request->getGet('tanggal');
-        }
-        if ($this->request->getGet('tahun')) {
-            $filters['tahun'] = $this->request->getGet('tahun');
-        }
-        if ($this->request->getGet('tanggal_mulai') && $this->request->getGet('tanggal_selesai')) {
-            $filters['tanggal_mulai'] = $this->request->getGet('tanggal_mulai');
-            $filters['tanggal_selesai'] = $this->request->getGet('tanggal_selesai');
-        }
-        if ($this->request->getGet('keterangan')) {
-            $filters['keterangan'] = $this->request->getGet('keterangan');
-        }
+        $filters = $this->_getFilters();
 
         $data = [
-            'title' => 'Laporan Presensi',
-            'presensi' => $this->presensiModel->getPresensiWithUser($filters),
-            'pegawai' => $this->userModel->where('role', 'pegawai')->findAll(),
-            'filters' => $filters
+            'title'         => 'Laporan Presensi',
+            'presensi'      => $this->presensiModel->getPresensiWithUser($filters),
+            'pegawai'       => $this->userModel->where('role', 'pegawai')->findAll(),
+            'filters'       => $filters,
+            'bagianOptions' => $this->bagianOptions, // << inject ke view
         ];
 
         return view('admin/laporan/index', $data);
     }
 
-    /**
-     * Export Laporan ke PDF - Format Template Daftar Hadir
-     */
+    /** Export PDF */
     public function exportPdf()
     {
         try {
-            $filters = $this->_getFilters();
-            
-            // Ambil data presensi
+            $filters  = $this->_getFilters();
             $presensi = $this->presensiModel->getPresensiWithUser($filters);
 
             if (empty($presensi)) {
                 return redirect()->back()->with('error', 'Tidak ada data untuk di-export');
             }
 
-            // Group data by date
-            $groupedData = [];
-            foreach ($presensi as $p) {
-                $date = date('Y-m-d', strtotime($p['waktu']));
-                if (!isset($groupedData[$date])) {
-                    $groupedData[$date] = [];
-                }
-                $groupedData[$date][] = $p;
-            }
-
-            // Generate HTML untuk PDF
-            $html = $this->_generatePdfTemplate($groupedData, $filters);
+            $groupedData = $this->_groupByDate($presensi);
+            $html        = $this->_generatePdfTemplate($groupedData, $filters);
 
             $options = new Options();
             $options->set('isHtml5ParserEnabled', true);
-            $options->set('isPhpEnabled', true);
             $options->set('defaultFont', 'Arial');
-            $options->set('isRemoteEnabled', true);
 
             $dompdf = new Dompdf($options);
             $dompdf->loadHtml($html);
             $dompdf->setPaper('F4', 'portrait');
             $dompdf->render();
-
-            $filename = 'daftar-hadir-apel-' . date('Y-m-d-His') . '.pdf';
-
-            $dompdf->stream($filename, [
-                'Attachment' => true,
-                'compress' => true
-            ]);
+            $dompdf->stream('daftar-hadir-apel-' . date('Y-m-d-His') . '.pdf', ['Attachment' => true]);
 
         } catch (\Exception $e) {
             log_message('error', 'Export PDF Error: ' . $e->getMessage());
@@ -108,79 +71,49 @@ class Laporan extends BaseController
         }
     }
 
-    /**
-     * Export Laporan ke Excel - Format Template Daftar Hadir
-     */
+    /** Export Excel */
     public function exportExcel()
     {
         try {
-            $filters = $this->_getFilters();
-            $presensi = $this->presensiModel->getPresensiWithUser($filters);
+            $filters     = $this->_getFilters();
+            $presensi    = $this->presensiModel->getPresensiWithUser($filters);
 
             if (empty($presensi)) {
                 return redirect()->back()->with('error', 'Tidak ada data untuk di-export');
             }
 
-            // Group by date
-            $groupedData = [];
-            foreach ($presensi as $p) {
-                $date = date('Y-m-d', strtotime($p['waktu']));
-                if (!isset($groupedData[$date])) {
-                    $groupedData[$date] = [];
-                }
-                $groupedData[$date][] = $p;
-            }
-
+            $groupedData = $this->_groupByDate($presensi);
             $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-            $sheet = $spreadsheet->getActiveSheet();
-
-            $row = 1;
-            $dateIndex = 0;
-            $totalDates = count($groupedData);
+            $sheet       = $spreadsheet->getActiveSheet();
+            $row         = 1;
+            $dateIndex   = 0;
+            $totalDates  = count($groupedData);
 
             foreach ($groupedData as $date => $attendances) {
                 $dateIndex++;
-                
-                // Hitung jumlah hadir dan tidak hadir
-                $jumlahHadir = 0;
-                $jumlahTidakHadir = 0;
-                foreach ($attendances as $att) {
-                    if (in_array(strtolower($att['keterangan']), ['hadir', 'terlambat'])) {
-                        $jumlahHadir++;
-                    } else {
-                        $jumlahTidakHadir++;
-                    }
-                }
+                [$jumlahHadir, $jumlahTidakHadir] = $this->_hitungKehadiran($attendances);
 
-                // Title - Baris 1
                 $sheet->setCellValue('A' . $row, 'DAFTAR HADIR APEL PAGI');
                 $sheet->mergeCells('A' . $row . ':E' . $row);
                 $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row++;
 
-                // Subtitle - Baris 2
                 $sheet->setCellValue('A' . $row, 'DINAS SOSIAL KAB. BATANG');
                 $sheet->mergeCells('A' . $row . ':E' . $row);
                 $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row++;
 
-                // HARI/TANGGAL - Baris 3
                 $sheet->setCellValue('A' . $row, 'HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)));
                 $sheet->mergeCells('A' . $row . ':E' . $row);
                 $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row += 2;
 
-                // Table header
                 $headerRow = $row;
-                $sheet->setCellValue('A' . $headerRow, 'NO');
-                $sheet->setCellValue('B' . $headerRow, 'NAMA');
-                $sheet->setCellValue('C' . $headerRow, 'NIP');
-                $sheet->setCellValue('D' . $headerRow, 'BIDANG');
-                $sheet->setCellValue('E' . $headerRow, 'KETERANGAN');
-
-                // Style header
+                foreach (['A'=>'NO','B'=>'NAMA','C'=>'NIP','D'=>'BIDANG','E'=>'KETERANGAN'] as $col => $label) {
+                    $sheet->setCellValue($col . $headerRow, $label);
+                }
                 $sheet->getStyle('A' . $headerRow . ':E' . $headerRow)->getFont()->setBold(true);
                 $sheet->getStyle('A' . $headerRow . ':E' . $headerRow)->getFill()
                     ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
@@ -189,94 +122,61 @@ class Laporan extends BaseController
                     ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $row++;
 
-                // Data rows (max 18 baris sesuai template)
-                $no = 1;
                 for ($i = 0; $i < 18; $i++) {
                     if (isset($attendances[$i])) {
                         $p = $attendances[$i];
-                        $sheet->setCellValue('A' . $row, $no);
-                        $sheet->setCellValue('B' . $row, $p['nama']);
-                        $sheet->setCellValue('C' . $row, $p['nip']);
-                        $sheet->setCellValue('D' . $row, $this->_getBagianLabel($p['bagian']));
-                        $sheet->setCellValue('E' . $row, strtoupper($p['keterangan']));
+                        $sheet->setCellValue('A'.$row, $i+1);
+                        $sheet->setCellValue('B'.$row, $p['nama']);
+                        $sheet->setCellValue('C'.$row, $p['nip']);
+                        $sheet->setCellValue('D'.$row, $this->_getBagianLabel($p['bagian']));
+                        $sheet->setCellValue('E'.$row, strtoupper($p['keterangan']));
                     } else {
-                        $sheet->setCellValue('A' . $row, $no);
-                        $sheet->setCellValue('B' . $row, '');
-                        $sheet->setCellValue('C' . $row, '');
-                        $sheet->setCellValue('D' . $row, '');
-                        $sheet->setCellValue('E' . $row, '');
+                        $sheet->setCellValue('A'.$row, $i+1);
+                        foreach (['B','C','D','E'] as $col) $sheet->setCellValue($col.$row, '');
                     }
                     $row++;
-                    $no++;
                 }
 
-                // Keterangan section (kiri) dan TTD (kanan) - sejajar
                 $row++;
                 $keteranganRow = $row;
-                
-                // Bagian kiri: Keterangan jumlah hadir/tidak hadir
-                $sheet->setCellValue('A' . $row, 'KETERANGAN :');
-                $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-                $row++;
-                $sheet->setCellValue('A' . $row, 'HADIR = ' . $jumlahHadir);
-                $row++;
-                $sheet->setCellValue('A' . $row, 'TIDAK HADIR = ' . $jumlahTidakHadir);
+                $sheet->setCellValue('A'.$row, 'KETERANGAN :'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+                $sheet->setCellValue('A'.$row, 'HADIR = ' . $jumlahHadir); $row++;
+                $sheet->setCellValue('A'.$row, 'TIDAK HADIR = ' . $jumlahTidakHadir);
 
-                // Bagian kanan: TTD - mulai dari row yang sama dengan KETERANGAN
                 $ttdRow = $keteranganRow;
-                $sheet->setCellValue('D' . $ttdRow, 'Kepala Dinas Sosial');
-                $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
-                $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                $ttdRow++;
-                $sheet->setCellValue('D' . $ttdRow, 'Kabupaten Batang');
-                $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
-                $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                
-                // Tambah jarak kosong (3 baris) antara "Kabupaten Batang" dan nama
-                $ttdRow += 3;
-                
-                $sheet->setCellValue('D' . $ttdRow, 'WILLOPO, AP., M.M.');
-                $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
-                $sheet->getStyle('D' . $ttdRow)->getFont()->setBold(true)->setUnderline(true);
-                $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                $ttdRow++;
-                $sheet->setCellValue('D' . $ttdRow, 'Pembina Utama Muda');
-                $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
-                $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                $ttdRow++;
-                $sheet->setCellValue('D' . $ttdRow, 'NIP.19740502 199311 1 001');
-                $sheet->mergeCells('D' . $ttdRow . ':E' . $ttdRow);
-                $sheet->getStyle('D' . $ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-                // Border untuk tabel
-                $styleArray = [
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        ],
-                    ],
-                ];
-                $sheet->getStyle('A' . $headerRow . ':E' . ($headerRow + 18))->applyFromArray($styleArray);
-
-                // Column widths
-                $sheet->getColumnDimension('A')->setWidth(5);
-                $sheet->getColumnDimension('B')->setWidth(30);
-                $sheet->getColumnDimension('C')->setWidth(20);
-                $sheet->getColumnDimension('D')->setWidth(20);
-                $sheet->getColumnDimension('E')->setWidth(20);
-
-                // Update row untuk halaman berikutnya (hanya jika bukan data terakhir)
-                if ($dateIndex < $totalDates) {
-                    $row = max($row, $ttdRow) + 3;
+                foreach (['D'=>'Kepala Dinas Sosial','E'=>''] as $col => $val) {
+                    $sheet->setCellValue('D'.$ttdRow, 'Kepala Dinas Sosial');
+                    $sheet->mergeCells('D'.$ttdRow.':E'.$ttdRow);
+                    $sheet->getStyle('D'.$ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    break;
                 }
+                $ttdRow++;
+                $sheet->setCellValue('D'.$ttdRow, 'Kabupaten Batang'); $sheet->mergeCells('D'.$ttdRow.':E'.$ttdRow);
+                $sheet->getStyle('D'.$ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $ttdRow += 4;
+                $sheet->setCellValue('D'.$ttdRow, 'WILLOPO, AP., M.M.'); $sheet->mergeCells('D'.$ttdRow.':E'.$ttdRow);
+                $sheet->getStyle('D'.$ttdRow)->getFont()->setBold(true)->setUnderline(true);
+                $sheet->getStyle('D'.$ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $ttdRow++;
+                $sheet->setCellValue('D'.$ttdRow, 'Pembina Utama Muda'); $sheet->mergeCells('D'.$ttdRow.':E'.$ttdRow);
+                $sheet->getStyle('D'.$ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $ttdRow++;
+                $sheet->setCellValue('D'.$ttdRow, 'NIP.19740502 199311 1 001'); $sheet->mergeCells('D'.$ttdRow.':E'.$ttdRow);
+                $sheet->getStyle('D'.$ttdRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $borderStyle = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+                $sheet->getStyle('A'.$headerRow.':E'.($headerRow+18))->applyFromArray($borderStyle);
+
+                foreach (['A'=>5,'B'=>30,'C'=>20,'D'=>20,'E'=>20] as $col => $w) {
+                    $sheet->getColumnDimension($col)->setWidth($w);
+                }
+
+                if ($dateIndex < $totalDates) $row = max($row, $ttdRow) + 3;
             }
 
-            $filename = 'daftar-hadir-apel-' . date('Y-m-d-His') . '.xlsx';
-
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Content-Disposition: attachment;filename="daftar-hadir-apel-' . date('Y-m-d-His') . '.xlsx"');
             header('Cache-Control: max-age=0');
-
             $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
             $writer->save('php://output');
             exit;
@@ -287,163 +187,81 @@ class Laporan extends BaseController
         }
     }
 
-    /**
-     * Export Laporan ke Word - Format Template Daftar Hadir
-     */
+    /** Export Word */
     public function exportWord()
     {
         try {
-            $filters = $this->_getFilters();
-            $presensi = $this->presensiModel->getPresensiWithUser($filters);
+            $filters     = $this->_getFilters();
+            $presensi    = $this->presensiModel->getPresensiWithUser($filters);
 
             if (empty($presensi)) {
                 return redirect()->back()->with('error', 'Tidak ada data untuk di-export');
             }
 
-            // Group by date
-            $groupedData = [];
-            foreach ($presensi as $p) {
-                $date = date('Y-m-d', strtotime($p['waktu']));
-                if (!isset($groupedData[$date])) {
-                    $groupedData[$date] = [];
-                }
-                $groupedData[$date][] = $p;
-            }
-
-            $phpWord = new PhpWord();
+            $groupedData = $this->_groupByDate($presensi);
+            $phpWord     = new PhpWord();
             $phpWord->setDefaultFontName('Arial');
             $phpWord->setDefaultFontSize(11);
 
-            $dateIndex = 0;
+            $dateIndex  = 0;
             $totalDates = count($groupedData);
 
             foreach ($groupedData as $date => $attendances) {
                 $dateIndex++;
-                
-                // Hitung jumlah hadir dan tidak hadir
-                $jumlahHadir = 0;
-                $jumlahTidakHadir = 0;
-                foreach ($attendances as $att) {
-                    if (in_array(strtolower($att['keterangan']), ['hadir', 'terlambat'])) {
-                        $jumlahHadir++;
-                    } else {
-                        $jumlahTidakHadir++;
-                    }
-                }
+                [$jumlahHadir, $jumlahTidakHadir] = $this->_hitungKehadiran($attendances);
 
-                $section = $phpWord->addSection([
-                    'marginLeft' => 600,
-                    'marginRight' => 600,
-                    'marginTop' => 600,
-                    'marginBottom' => 600,
-                ]);
-
-                // Title - Baris 1
-                $section->addText(
-                    'DAFTAR HADIR APEL PAGI',
-                    ['bold' => true, 'size' => 14],
-                    ['alignment' => Jc::CENTER]
-                );
-                
-                // Subtitle - Baris 2
-                $section->addText(
-                    'DINAS SOSIAL KAB. BATANG',
-                    ['bold' => true, 'size' => 14],
-                    ['alignment' => Jc::CENTER]
-                );
-                
-                // HARI/TANGGAL - Baris 3
-                $section->addText(
-                    'HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)),
-                    ['size' => 11],
-                    ['alignment' => Jc::CENTER]
-                );
+                $section = $phpWord->addSection(['marginLeft'=>600,'marginRight'=>600,'marginTop'=>600,'marginBottom'=>600]);
+                $section->addText('DAFTAR HADIR APEL PAGI', ['bold'=>true,'size'=>14], ['alignment'=>Jc::CENTER]);
+                $section->addText('DINAS SOSIAL KAB. BATANG', ['bold'=>true,'size'=>14], ['alignment'=>Jc::CENTER]);
+                $section->addText('HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)), ['size'=>11], ['alignment'=>Jc::CENTER]);
                 $section->addTextBreak(2);
 
-                // Table
-                $cellStyle = [
-                    'borderSize' => 6,
-                    'borderColor' => '000000',
-                ];
-
-                $table = $section->addTable([
-                    'borderSize' => 6,
-                    'borderColor' => '000000',
-                    'width' => 100 * 50,
-                    'unit' => 'pct'
-                ]);
-
-                // Header row
+                $cellStyle = ['borderSize'=>6,'borderColor'=>'000000'];
+                $table     = $section->addTable(['borderSize'=>6,'borderColor'=>'000000','width'=>100*50,'unit'=>'pct']);
                 $table->addRow(400);
-                $table->addCell(1000, $cellStyle)->addText('NO', ['bold' => true], ['alignment' => Jc::CENTER]);
-                $table->addCell(3500, $cellStyle)->addText('NAMA', ['bold' => true], ['alignment' => Jc::CENTER]);
-                $table->addCell(2500, $cellStyle)->addText('NIP', ['bold' => true], ['alignment' => Jc::CENTER]);
-                $table->addCell(1500, $cellStyle)->addText('BIDANG', ['bold' => true], ['alignment' => Jc::CENTER]);
-                $table->addCell(1500, $cellStyle)->addText('KETERANGAN', ['bold' => true], ['alignment' => Jc::CENTER]);
+                $table->addCell(1000, $cellStyle)->addText('NO',          ['bold'=>true], ['alignment'=>Jc::CENTER]);
+                $table->addCell(3500, $cellStyle)->addText('NAMA',        ['bold'=>true], ['alignment'=>Jc::CENTER]);
+                $table->addCell(2500, $cellStyle)->addText('NIP',         ['bold'=>true], ['alignment'=>Jc::CENTER]);
+                $table->addCell(1500, $cellStyle)->addText('BIDANG',      ['bold'=>true], ['alignment'=>Jc::CENTER]);
+                $table->addCell(1500, $cellStyle)->addText('KETERANGAN',  ['bold'=>true], ['alignment'=>Jc::CENTER]);
 
-                // Data rows (max 18)
                 for ($i = 0; $i < 18; $i++) {
                     $table->addRow();
                     if (isset($attendances[$i])) {
                         $p = $attendances[$i];
-                        $table->addCell(1000, $cellStyle)->addText(($i + 1), null, ['alignment' => Jc::CENTER]);
+                        $table->addCell(1000, $cellStyle)->addText($i+1, null, ['alignment'=>Jc::CENTER]);
                         $table->addCell(3500, $cellStyle)->addText($p['nama']);
                         $table->addCell(2500, $cellStyle)->addText($p['nip']);
-                        $table->addCell(1500, $cellStyle)->addText($this->_getBagianLabel($p['bagian']), null, ['alignment' => Jc::CENTER]);
-                        $table->addCell(1500, $cellStyle)->addText(strtoupper($p['keterangan']), null, ['alignment' => Jc::CENTER]);
+                        $table->addCell(1500, $cellStyle)->addText($this->_getBagianLabel($p['bagian']), null, ['alignment'=>Jc::CENTER]);
+                        $table->addCell(1500, $cellStyle)->addText(strtoupper($p['keterangan']), null, ['alignment'=>Jc::CENTER]);
                     } else {
-                        $table->addCell(1000, $cellStyle)->addText(($i + 1), null, ['alignment' => Jc::CENTER]);
-                        $table->addCell(3500, $cellStyle)->addText('');
-                        $table->addCell(2500, $cellStyle)->addText('');
-                        $table->addCell(1500, $cellStyle)->addText('');
-                        $table->addCell(1500, $cellStyle)->addText('');
+                        $table->addCell(1000, $cellStyle)->addText($i+1, null, ['alignment'=>Jc::CENTER]);
+                        foreach ([3500,2500,1500,1500] as $w) $table->addCell($w, $cellStyle)->addText('');
                     }
                 }
 
                 $section->addTextBreak(1);
-
-                // Buat tabel untuk layout 2 kolom (keterangan di kiri, TTD di kanan)
-                $layoutTable = $section->addTable([
-                    'borderSize' => 0,
-                    'borderColor' => 'FFFFFF',
-                    'width' => 100 * 50,
-                    'unit' => 'pct'
-                ]);
-
+                $layoutTable = $section->addTable(['borderSize'=>0,'borderColor'=>'FFFFFF','width'=>100*50,'unit'=>'pct']);
                 $layoutTable->addRow();
-                
-                // Kolom kiri: Keterangan
-                $leftCell = $layoutTable->addCell(5000, ['borderSize' => 0]);
-                $leftCell->addText('KETERANGAN :', ['bold' => true]);
+                $leftCell  = $layoutTable->addCell(5000, ['borderSize'=>0]);
+                $leftCell->addText('KETERANGAN :', ['bold'=>true]);
                 $leftCell->addText('HADIR = ' . $jumlahHadir);
                 $leftCell->addText('TIDAK HADIR = ' . $jumlahTidakHadir);
-
-                // Kolom kanan: TTD
-                $rightCell = $layoutTable->addCell(5000, ['borderSize' => 0, 'valign' => 'top']);
-                $rightCell->addText('Kepala Dinas Sosial', null, ['alignment' => Jc::CENTER]);
-                $rightCell->addText('Kabupaten Batang', null, ['alignment' => Jc::CENTER]);
-                
-                // Tambah jarak kosong (3 textbreak) antara "Kabupaten Batang" dan nama
+                $rightCell = $layoutTable->addCell(5000, ['borderSize'=>0,'valign'=>'top']);
+                $rightCell->addText('Kepala Dinas Sosial', null, ['alignment'=>Jc::CENTER]);
+                $rightCell->addText('Kabupaten Batang',    null, ['alignment'=>Jc::CENTER]);
                 $rightCell->addTextBreak(3);
-                
-                $rightCell->addText('WILLOPO, AP., M.M.', ['bold' => true, 'underline' => 'single'], ['alignment' => Jc::CENTER]);
-                $rightCell->addText('Pembina Utama Muda', null, ['alignment' => Jc::CENTER]);
-                $rightCell->addText('NIP.19740502 199311 1 001', null, ['alignment' => Jc::CENTER]);
+                $rightCell->addText('WILLOPO, AP., M.M.',            ['bold'=>true,'underline'=>'single'], ['alignment'=>Jc::CENTER]);
+                $rightCell->addText('Pembina Utama Muda',             null, ['alignment'=>Jc::CENTER]);
+                $rightCell->addText('NIP.19740502 199311 1 001',      null, ['alignment'=>Jc::CENTER]);
 
-                // Page break untuk tanggal berikutnya (hanya jika bukan data terakhir)
-                if ($dateIndex < $totalDates) {
-                    $section->addPageBreak();
-                }
+                if ($dateIndex < $totalDates) $section->addPageBreak();
             }
 
-            $filename = 'daftar-hadir-apel-' . date('Y-m-d-His') . '.docx';
-
             header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Content-Disposition: attachment;filename="daftar-hadir-apel-' . date('Y-m-d-His') . '.docx"');
             header('Cache-Control: max-age=0');
-
-            $writer = IOFactory::createWriter($phpWord, 'Word2007');
-            $writer->save('php://output');
+            IOFactory::createWriter($phpWord, 'Word2007')->save('php://output');
             exit;
 
         } catch (\Exception $e) {
@@ -452,170 +270,105 @@ class Laporan extends BaseController
         }
     }
 
-    /**
-     * Generate PDF Template HTML
-     */
-    private function _generatePdfTemplate($groupedData, $filters)
+    // ===== PRIVATE HELPERS =====
+
+    private function _groupByDate(array $presensi): array
+    {
+        $grouped = [];
+        foreach ($presensi as $p) {
+            $grouped[date('Y-m-d', strtotime($p['waktu']))][] = $p;
+        }
+        return $grouped;
+    }
+
+    private function _hitungKehadiran(array $attendances): array
+    {
+        $hadir = 0;
+        foreach ($attendances as $a) {
+            if (in_array(strtolower($a['keterangan']), ['hadir', 'terlambat'])) $hadir++;
+        }
+        return [$hadir, count($attendances) - $hadir];
+    }
+
+    private function _generatePdfTemplate(array $groupedData, array $filters): string
     {
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-            body { font-family: Arial, sans-serif; font-size: 11px; }
-            .page { page-break-after: always; padding: 20px; }
-            .page:last-child { page-break-after: auto; }
-            .header { text-align: center; margin-bottom: 10px; }
-            .title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 3px; }
-            .subtitle { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-            th { background-color: #ddd; font-weight: bold; text-align: center; }
-            td.center { text-align: center; }
-            .footer-section { display: table; width: 100%; margin-top: 20px; }
-            .footer-left { display: table-cell; width: 50%; vertical-align: top; }
-            .footer-right { display: table-cell; width: 50%; text-align: center; vertical-align: top; }
-            .keterangan { margin-top: 0; }
-            .signature div { margin: 5px 0; }
-            .signature-space { margin-top: 120px; margin-bottom: 5px; }
+            body{font-family:Arial,sans-serif;font-size:11px;}
+            .page{page-break-after:always;padding:20px;}.page:last-child{page-break-after:auto;}
+            .title{text-align:center;font-size:14px;font-weight:bold;margin-bottom:3px;}
+            .subtitle{text-align:center;font-size:14px;font-weight:bold;margin-bottom:5px;}
+            .header{text-align:center;margin-bottom:10px;}
+            table{width:100%;border-collapse:collapse;margin:20px 0;}
+            th,td{border:1px solid #000;padding:8px;text-align:left;}
+            th{background-color:#ddd;font-weight:bold;text-align:center;}
+            td.center{text-align:center;}
+            .footer-section{display:table;width:100%;margin-top:20px;}
+            .footer-left{display:table-cell;width:50%;vertical-align:top;}
+            .footer-right{display:table-cell;width:50%;text-align:center;vertical-align:top;}
+            .signature-space{margin-top:120px;}
         </style></head><body>';
 
-        $dateIndex = 0;
+        $dateIndex  = 0;
         $totalDates = count($groupedData);
 
         foreach ($groupedData as $date => $attendances) {
             $dateIndex++;
-            
-            // Hitung jumlah hadir dan tidak hadir
-            $jumlahHadir = 0;
-            $jumlahTidakHadir = 0;
-            foreach ($attendances as $att) {
-                if (in_array(strtolower($att['keterangan']), ['hadir', 'terlambat'])) {
-                    $jumlahHadir++;
-                } else {
-                    $jumlahTidakHadir++;
-                }
-            }
+            [$jumlahHadir, $jumlahTidakHadir] = $this->_hitungKehadiran($attendances);
 
             $html .= '<div class="page">';
-            
-            // Title - Baris 1
             $html .= '<div class="title">DAFTAR HADIR APEL PAGI</div>';
-            
-            // Subtitle - Baris 2
             $html .= '<div class="subtitle">DINAS SOSIAL KAB. BATANG</div>';
-            
-            // HARI/TANGGAL - Baris 3
             $html .= '<div class="header">HARI/TANGGAL : ' . $this->_getDayName($date) . ', ' . date('d-m-Y', strtotime($date)) . '</div>';
-            
             $html .= '<table><thead><tr>';
-            $html .= '<th width="5%">NO</th>';
-            $html .= '<th width="30%">NAMA</th>';
-            $html .= '<th width="25%">NIP</th>';
-            $html .= '<th width="20%">BIDANG</th>';
-            $html .= '<th width="20%">KETERANGAN</th>';
+            foreach (['5%'=>'NO','30%'=>'NAMA','25%'=>'NIP','20%'=>'BIDANG','20%'=>'KETERANGAN'] as $w => $h) {
+                $html .= '<th width="'.$w.'">'.$h.'</th>';
+            }
             $html .= '</tr></thead><tbody>';
 
             for ($i = 0; $i < 18; $i++) {
                 $html .= '<tr>';
                 if (isset($attendances[$i])) {
-                    $p = $attendances[$i];
-                    $html .= '<td class="center">' . ($i + 1) . '</td>';
-                    $html .= '<td>' . $p['nama'] . '</td>';
-                    $html .= '<td>' . $p['nip'] . '</td>';
-                    $html .= '<td class="center">' . $this->_getBagianLabel($p['bagian']) . '</td>';
-                    $html .= '<td class="center">' . strtoupper($p['keterangan']) . '</td>';
+                    $p     = $attendances[$i];
+                    $html .= '<td class="center">'.($i+1).'</td>';
+                    $html .= '<td>'.htmlspecialchars($p['nama']).'</td>';
+                    $html .= '<td>'.htmlspecialchars($p['nip']).'</td>';
+                    $html .= '<td class="center">'.htmlspecialchars($this->_getBagianLabel($p['bagian'])).'</td>';
+                    $html .= '<td class="center">'.strtoupper($p['keterangan']).'</td>';
                 } else {
-                    $html .= '<td class="center">' . ($i + 1) . '</td>';
-                    $html .= '<td></td><td></td><td></td><td></td>';
+                    $html .= '<td class="center">'.($i+1).'</td><td></td><td></td><td></td><td></td>';
                 }
                 $html .= '</tr>';
             }
 
             $html .= '</tbody></table>';
-            
-            // Footer section dengan 2 kolom
             $html .= '<div class="footer-section">';
-            
-            // Kolom kiri: Keterangan
-            $html .= '<div class="footer-left">';
-            $html .= '<div class="keterangan">';
-            $html .= '<div><strong>KETERANGAN :</strong></div>';
-            $html .= '<div>HADIR = ' . $jumlahHadir . '</div>';
-            $html .= '<div>TIDAK HADIR = ' . $jumlahTidakHadir . '</div>';
-            $html .= '</div>';
-            $html .= '</div>';
-
-            // Kolom kanan: TTD
-            $html .= '<div class="footer-right">';
-            $html .= '<div class="signature">';
-            $html .= '<div>Kepala Dinas Sosial</div>';
-            $html .= '<div>Kabupaten Batang</div>';
-            // Jarak kosong untuk tanda tangan (lebih lebar untuk PDF)
-            $html .= '<br><br><br>';
-            $html .= '<div class="signature-space">&nbsp;</div>';
-            $html .= '<div><strong><u>WILLOPO, AP., M.M.</u></strong></div>';
-            $html .= '<div>Pembina Utama Muda</div>';
-            $html .= '<div>NIP.19740502 199311 1 001</div>';
-            $html .= '</div>';
-            $html .= '</div>';
-            
-            $html .= '</div>'; // end footer-section
-            
-            $html .= '</div>'; // end page
+            $html .= '<div class="footer-left"><strong>KETERANGAN :</strong><br>HADIR = '.$jumlahHadir.'<br>TIDAK HADIR = '.$jumlahTidakHadir.'</div>';
+            $html .= '<div class="footer-right">Kepala Dinas Sosial<br>Kabupaten Batang<br><div class="signature-space">&nbsp;</div><strong><u>WILLOPO, AP., M.M.</u></strong><br>Pembina Utama Muda<br>NIP.19740502 199311 1 001</div>';
+            $html .= '</div></div>';
         }
 
-        $html .= '</body></html>';
-        return $html;
+        return $html . '</body></html>';
     }
 
-    /**
-     * Helper function untuk mendapatkan nama hari dalam bahasa Indonesia
-     */
-    private function _getDayName($date)
+    private function _getDayName(string $date): string
     {
-        $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        return $days[date('w', strtotime($date))];
+        return ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][date('w', strtotime($date))];
     }
 
-    /**
-     * Helper function untuk mendapatkan label bagian
-     */
-    private function _getBagianLabel($bagian)
+    /** Ambil nama bagian dari $bagianOptions dinamis */
+    private function _getBagianLabel(?string $kode): string
     {
-        $labels = [
-            'sekretariat' => 'Sekretariat',
-            'rehlinjamsos' => 'Rehlinjamsos',
-            'dayasos' => 'Dayasos'
-        ];
-        return isset($labels[$bagian]) ? $labels[$bagian] : '-';
+        return $this->bagianOptions[$kode] ?? ($kode ? ucfirst($kode) : '-');
     }
 
-    /**
-     * Helper function untuk mengambil filters dari GET request
-     */
-    private function _getFilters()
+    private function _getFilters(): array
     {
         $filters = [];
-        
-        if ($this->request->getGet('user_id')) {
-            $filters['user_id'] = $this->request->getGet('user_id');
+        $keys    = ['user_id','bagian','tanggal','tahun','tanggal_mulai','tanggal_selesai','keterangan'];
+        foreach ($keys as $key) {
+            $val = $this->request->getGet($key);
+            if (!empty($val)) $filters[$key] = $val;
         }
-        if ($this->request->getGet('bagian')) {
-            $filters['bagian'] = $this->request->getGet('bagian');
-        }
-        if ($this->request->getGet('tanggal')) {
-            $filters['tanggal'] = $this->request->getGet('tanggal');
-        }
-        if ($this->request->getGet('tahun')) {
-            $filters['tahun'] = $this->request->getGet('tahun');
-        }
-        if ($this->request->getGet('tanggal_mulai')) {
-            $filters['tanggal_mulai'] = $this->request->getGet('tanggal_mulai');
-        }
-        if ($this->request->getGet('tanggal_selesai')) {
-            $filters['tanggal_selesai'] = $this->request->getGet('tanggal_selesai');
-        }
-        if ($this->request->getGet('keterangan')) {
-            $filters['keterangan'] = $this->request->getGet('keterangan');
-        }
-        
         return $filters;
     }
 }

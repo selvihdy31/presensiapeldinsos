@@ -244,6 +244,9 @@
                 <a href="<?= base_url('admin/pegawai') ?>" class="menu-item <?= strpos(uri_string(), 'admin/pegawai') !== false ? 'active' : '' ?>">
                     <i class="bi bi-people"></i> Data Pegawai
                 </a>
+                <a href="<?= base_url('admin/ijin') ?>" class="menu-item <?= strpos(uri_string(), 'admin/ijin') !== false ? 'active' : '' ?>">
+                    <i class="bi bi-card-checklist"></i> Kelola Izin Pegawai
+                </a>
                 <a href="<?= base_url('admin/qrcode') ?>" class="menu-item <?= strpos(uri_string(), 'admin/qrcode') !== false ? 'active' : '' ?>">
                     <i class="bi bi-qr-code"></i> Kelola QR Code
                 </a>
@@ -256,6 +259,9 @@
                 </a>
                 <a href="<?= base_url('pegawai/presensi/scan') ?>" class="menu-item <?= strpos(uri_string(), 'pegawai/presensi/scan') !== false ? 'active' : '' ?>">
                     <i class="bi bi-qr-code-scan"></i> Scan Presensi
+                </a>
+                <a href="<?= base_url('pegawai/presensi/ijin') ?>" class="menu-item <?= strpos(uri_string(), 'pegawai/presensi/ijin') !== false ? 'active' : '' ?>">
+                    <i class="bi bi-card-checklist"></i> Pengajuan Izin
                 </a>
                 <a href="<?= base_url('pegawai/presensi/riwayat') ?>" class="menu-item <?= strpos(uri_string(), 'pegawai/presensi/riwayat') !== false ? 'active' : '' ?>">
                     <i class="bi bi-clock-history"></i> Riwayat Presensi
@@ -286,6 +292,7 @@
                 <div class="d-none d-md-block text-end">
                     <div class="fw-bold"><?= session()->get('nama') ?></div>
                     <small class="text-muted"><?= session()->get('nip') ?></small>
+                    <small class="text-muted d-block"><?= session()->get('bagian') ?></small>
                 </div>
                 <div class="user-avatar">
                     <?= strtoupper(substr(session()->get('nama'), 0, 1)) ?>

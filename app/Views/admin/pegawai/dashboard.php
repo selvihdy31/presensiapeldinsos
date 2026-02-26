@@ -166,7 +166,7 @@ $gradient = ($has_presensi_today && $currentStatus)
 </div>
 
 <!-- Quick Actions Menu -->
-<div class="row g-3 mb-4">
+<!-- <div class="row g-3 mb-4">
     <div class="col-md-4">
         <a href="<?= base_url('pegawai/presensi/scan') ?>" class="card border-0 shadow-sm text-decoration-none hover-lift h-100">
             <div class="card-body text-center py-4">
@@ -202,7 +202,7 @@ $gradient = ($has_presensi_today && $currentStatus)
             </div>
         </a>
     </div>
-</div>
+</div> -->
 
 <!-- Statistik Presensi -->
 <!-- Statistik Presensi -->

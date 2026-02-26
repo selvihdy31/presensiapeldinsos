@@ -13,8 +13,9 @@
                     <select class="form-select" name="user_id">
                         <option value="">Semua Pegawai</option>
                         <?php foreach ($pegawai as $p): ?>
-                            <option value="<?= $p['id'] ?>" <?= isset($filters['user_id']) && $filters['user_id'] == $p['id'] ? 'selected' : '' ?>>
-                                <?= $p['nama'] ?>
+                            <option value="<?= $p['id'] ?>"
+                                <?= (isset($filters['user_id']) && $filters['user_id'] == $p['id']) ? 'selected' : '' ?>>
+                                <?= esc($p['nama']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -23,46 +24,31 @@
                     <label class="form-label">Bidang</label>
                     <select class="form-select" name="bagian">
                         <option value="">Semua Bidang</option>
-                        <option value="sekretariat" <?= isset($filters['bagian']) && $filters['bagian'] == 'sekretariat' ? 'selected' : '' ?>>
-                            Sekretariat
-                        </option>
-                        <option value="rehlinjamsos" <?= isset($filters['bagian']) && $filters['bagian'] == 'rehlinjamsos' ? 'selected' : '' ?>>
-                            Rehlinjamsos
-                        </option>
-                        <option value="dayasos" <?= isset($filters['bagian']) && $filters['bagian'] == 'dayasos' ? 'selected' : '' ?>>
-                            Dayasos
-                        </option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Tahun</label>
-                    <select class="form-select" name="tahun">
-                        <option value="">Semua Tahun</option>
-                        <?php 
-                        $currentYear = date('Y');
-                        for ($year = $currentYear; $year >= $currentYear - 5; $year--): 
-                        ?>
-                            <option value="<?= $year ?>" <?= isset($filters['tahun']) && $filters['tahun'] == $year ? 'selected' : '' ?>>
-                                <?= $year ?>
+                        <?php foreach($bagianOptions as $kode => $nama): ?>
+                            <option value="<?= esc($kode) ?>"
+                                <?= (isset($filters['bagian']) && $filters['bagian'] == $kode) ? 'selected' : '' ?>>
+                                <?= esc($nama) ?>
                             </option>
-                        <?php endfor; ?>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Dari Tanggal</label>
-                    <input type="date" class="form-control" name="tanggal_mulai" value="<?= $filters['tanggal_mulai'] ?? '' ?>">
+                    <input type="date" class="form-control" name="tanggal_mulai"
+                           value="<?= $filters['tanggal_mulai'] ?? '' ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Sampai Tanggal</label>
-                    <input type="date" class="form-control" name="tanggal_selesai" value="<?= $filters['tanggal_selesai'] ?? '' ?>">
+                    <input type="date" class="form-control" name="tanggal_selesai"
+                           value="<?= $filters['tanggal_selesai'] ?? '' ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Keterangan</label>
                     <select class="form-select" name="keterangan">
                         <option value="">Semua</option>
-                        <option value="hadir" <?= isset($filters['keterangan']) && $filters['keterangan'] == 'hadir' ? 'selected' : '' ?>>Hadir</option>
-                        <option value="alpha" <?= isset($filters['keterangan']) && $filters['keterangan'] == 'alpha' ? 'selected' : '' ?>>Alpa</option>
-                        <option value="ijin" <?= isset($filters['keterangan']) && $filters['keterangan'] == 'ijin' ? 'selected' : '' ?>>Ijin</option>
+                        <option value="hadir" <?= (isset($filters['keterangan']) && $filters['keterangan'] == 'hadir') ? 'selected' : '' ?>>Hadir</option>
+                        <option value="alpha" <?= (isset($filters['keterangan']) && $filters['keterangan'] == 'alpha') ? 'selected' : '' ?>>Alpha</option>
+                        <option value="ijin"  <?= (isset($filters['keterangan']) && $filters['keterangan'] == 'ijin')  ? 'selected' : '' ?>>Ijin</option>
                     </select>
                 </div>
                 <div class="col-md-1">
@@ -113,28 +99,15 @@
                             <td colspan="9" class="text-center text-muted">Tidak ada data presensi</td>
                         </tr>
                     <?php else: ?>
-                        <?php $no = 1;
-                        foreach ($presensi as $p): ?>
+                        <?php $no = 1; foreach ($presensi as $p): ?>
                             <tr>
                                 <td><?= $no++ ?></td>
-                                <td><?= $p['nip'] ?></td>
-                                <td><?= $p['nama'] ?></td>
+                                <td><?= esc($p['nip']) ?></td>
+                                <td><?= esc($p['nama']) ?></td>
                                 <td>
-                                    <?php 
-                                    $bagianLabels = [
-                                        'sekretariat' => 'Sekretariat',
-                                        'rehlinjamsos' => 'Rehlinjamsos',
-                                        'dayasos' => 'Dayasos'
-                                    ];
-                                    $bagianColors = [
-                                        'sekretariat' => 'primary',
-                                        'rehlinjamsos' => 'info',
-                                        'dayasos' => 'warning'
-                                    ];
-                                    ?>
-                                    <?php if(isset($p['bagian']) && $p['bagian']): ?>
-                                        <span class="badge bg-<?= $bagianColors[$p['bagian']] ?>">
-                                            <?= $bagianLabels[$p['bagian']] ?>
+                                    <?php if(!empty($p['bagian'])): ?>
+                                        <span class="badge bg-secondary">
+                                            <?= esc($bagianOptions[$p['bagian']] ?? ucfirst($p['bagian'])) ?>
                                         </span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">-</span>
@@ -144,36 +117,14 @@
                                 <td><?= date('H:i', strtotime($p['waktu'])) ?></td>
                                 <td>
                                     <?php
-                                    // Tentukan warna badge berdasarkan keterangan
-                                    $keterangan = strtolower($p['keterangan']);
-                                    switch ($keterangan) {
-                                        case 'hadir':
-                                            $badgeClass = 'bg-success';
-                                            $displayText = 'Hadir';
-                                            break;
-                                        case 'alpha':
-                                            $badgeClass = 'bg-danger';
-                                            $displayText = 'Alpha';
-                                            break;
-                                        case 'ijin':
-                                            $badgeClass = 'bg-info';
-                                            $displayText = 'Ijin';
-                                            break;
-                                        case 'terlambat':
-                                            $badgeClass = 'bg-warning text-dark';
-                                            $displayText = 'Terlambat';
-                                            break;
-                                        default:
-                                            $badgeClass = 'bg-secondary';
-                                            $displayText = ucfirst($keterangan);
-                                    }
+                                    $k   = strtolower($p['keterangan']);
+                                    $map = ['hadir'=>'bg-success','alpha'=>'bg-danger','ijin'=>'bg-info','terlambat'=>'bg-warning text-dark'];
+                                    $cls = $map[$k] ?? 'bg-secondary';
                                     ?>
-                                    <span class="badge <?= $badgeClass ?>">
-                                        <?= $displayText ?>
-                                    </span>
+                                    <span class="badge <?= $cls ?>"><?= ucfirst($k) ?></span>
                                 </td>
-                                <td><?= $p['latitude'] ?>, <?= $p['longitude'] ?></td>
-                                <td><?= $p['lokasi'] ?? '-' ?></td>
+                                <td><?= esc($p['latitude']) ?>, <?= esc($p['longitude']) ?></td>
+                                <td><?= esc($p['lokasi'] ?? '-') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
