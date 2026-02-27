@@ -213,9 +213,9 @@
             </div>
         <?php endif; ?>
     </div>
-    <div class="watermark">
+    <!-- <div class="watermark">
         <small>Sistem by Selvi Hidayah</small>
-    </div>
+    </div> -->
 </div>
 
 <style>

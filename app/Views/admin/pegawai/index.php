@@ -6,7 +6,7 @@
     <div class="d-flex gap-2">
         <!-- Tombol Kelola Bagian -->
         <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalBagian">
-            <i class="bi bi-diagram-3"></i> Kelola Bagian
+            <i class="bi bi-diagram-3"></i> Kelola Bidang
         </button>
         <a href="<?= base_url('admin/pegawai/create') ?>" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Tambah Pegawai
